@@ -1,0 +1,85 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000" >
+
+    <android.support.v4.view.ViewPager
+        android:id="@+id/pager"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_above="@+id/frameLayout"
+        android:layout_below="@+id/tournament_round" />
+
+    <Button
+        android:id="@+id/tournament_name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentTop="true"
+        android:text="Tournament Name"
+        android:textSize="32sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/roundTimer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/tournament_name"
+        android:layout_centerHorizontal="true"
+        android:text="10:55"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:textColor="#548DD4"
+        android:textSize="32sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:id="@+id/tournament_round"
+        android:layout_width="400dp"
+        android:layout_height="60dp"
+        android:layout_below="@+id/roundTimer"
+        android:layout_centerHorizontal="true"
+        android:gravity="center"
+        android:text="Round 1"
+        android:textAppearance="?android:attr/textAppearanceLarge"
+        android:textSize="40sp"
+        android:textStyle="bold" />
+
+    <ImageButton
+        android:id="@+id/right_arrow"
+        android:layout_width="70dp"
+        android:layout_height="60dp"
+        android:layout_alignBottom="@+id/tournament_round"
+        android:layout_toRightOf="@+id/tournament_round"
+        android:background="@drawable/right_arrow" />
+
+    <ImageButton
+        android:id="@+id/left_arrow"
+        android:layout_width="70dp"
+        android:layout_height="60dp"
+        android:layout_alignBottom="@+id/tournament_round"
+
+        android:layout_toLeftOf="@+id/tournament_round"
+        android:background="@drawable/left_arrow" />
+    
+     <FrameLayout
+        android:id="@+id/frameLayout"
+        android:layout_width="wrap_content"
+        android:layout_height="70dp"
+        android:background="#AA444444"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentRight="true" >
+
+        <Button
+            android:id="@+id/newMatch"
+            android:layout_width="wrap_content"
+            android:layout_height="60dp"
+            android:layout_gravity="center"
+            android:textSize="22sp"
+            android:text="New Match" />
+
+    </FrameLayout>
+
+</RelativeLayout>
