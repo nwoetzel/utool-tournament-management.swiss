@@ -5,10 +5,9 @@ import utool.plugin.Player;
 import utool.plugin.activity.AbstractPluginCommonActivity;
 import utool.plugin.activity.TournamentContainer;
 import utool.plugin.swiss.TournamentActivity.HelpDialog;
+import utool.plugin.swiss.communication.OutgoingCommandHandler;
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
 import android.support.v4.app.DialogFragment;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -19,7 +18,6 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
-import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.CompoundButton.OnCheckedChangeListener;
@@ -30,7 +28,6 @@ import android.widget.TextView;
 /**
  * Tab responsible for adjusting player permissions
  * Should be accessible by hosts only
- * //TODO get rid of  apply button
  * @author waltzm
  * @version 1/29/2013
  */
@@ -55,12 +52,6 @@ public class OptionsPlayerTab extends AbstractPluginCommonActivity {
 	 * first help text of the options player tab
 	 */
 	private static final String HELP_TEXT_1="This tab allows you to adjust the connected player's permissions. Players with moderator permissions are able to record scores on their device.";
-
-	/**
-	 * Shared preferences key for getting if the screen has been visited before
-	 */
-	private static final String FIRST_TIME_KEY = "utool.plugin.swiss.OptionsPlayerTab";
-
 
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -91,7 +82,6 @@ public class OptionsPlayerTab extends AbstractPluginCommonActivity {
 			findViewById(R.id.no_player_text).setVisibility(View.VISIBLE);
 			findViewById(R.id.op_mod_header).setVisibility(View.INVISIBLE);
 			findViewById(R.id.op_player_header).setVisibility(View.INVISIBLE);
-			findViewById(R.id.options_apply).setVisibility(View.INVISIBLE);
 		}
 		else
 		{
@@ -100,52 +90,32 @@ public class OptionsPlayerTab extends AbstractPluginCommonActivity {
 			findViewById(R.id.no_player_text).setVisibility(View.GONE);
 			findViewById(R.id.op_mod_header).setVisibility(View.VISIBLE);
 			findViewById(R.id.op_player_header).setVisibility(View.VISIBLE);
-			findViewById(R.id.options_apply).setVisibility(View.VISIBLE);
-		}
-
-
-		//determine if help has been played yet
-		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-
-		// use a default value to true (is first time)
-		boolean firstTime= prefs.getBoolean(FIRST_TIME_KEY, true); 
-		if(firstTime)
-		{
-			this.setupHelpPopups();
-
-			//setup preferences to remember help has been played
-			prefs.edit().putBoolean(FIRST_TIME_KEY, false).commit();
 		}
 
 		//setup adapter
 		ListView l = (ListView)findViewById(R.id.option_list);
 		ad=new OptionsPlayersAdapter(this, R.id.option_list, parts);
 		l.setAdapter(ad);
+	}
+	
+	@Override
+	public void onPause()
+	{
+		super.onPause();
+		//save all of the permissions done automatically since player list is updated
+		//re-send player list with updated permissions to connected devices
+		ArrayList<Player> p = t.getPlayers();//ad.getPlayers();
 
-		//TODO remove
-		//setup apply button
-		Button apply = (Button)findViewById(R.id.options_apply);
-		apply.setOnClickListener(new OnClickListener(){
+		Player[] l = new Player[p.size()];
 
-			public void onClick(View arg0) 
-			{
-				//save all of the permissions done automatically since player list is updated
+		for(int i=0;i<p.size();i++)
+		{
+			l[i] = p.get(i);
+		}
 
-				//re-send player list with updated permissions to connected devices
-				ArrayList<Player> p = t.getPlayers();//ad.getPlayers();
-
-				Player[] l = new Player[p.size()];
-
-				for(int i=0;i<p.size();i++)
-				{
-					l[i] = p.get(i);
-				}
-
-				//TODO this needs to be added back in for participants to work
-				//t.getOutgoingCommandHandler().handleSendPlayers(getTournamentId(), l);
-				finish();
-			}
-		});
+		//notifies connected of permission change
+		OutgoingCommandHandler och = new OutgoingCommandHandler(t);
+		och.handleSendPlayers(getTournamentId(), l);
 	}
 
 	/**

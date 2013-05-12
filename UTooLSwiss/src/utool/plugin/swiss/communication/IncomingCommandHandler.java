@@ -4,9 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.StringTokenizer;
 import java.util.UUID;
-
 import android.util.Log;
-
 import utool.plugin.Player;
 import utool.plugin.activity.AbstractIncomingCommandHandler;
 import utool.plugin.activity.AbstractTournament;
@@ -47,10 +45,10 @@ public class IncomingCommandHandler extends AbstractIncomingCommandHandler{
 	@Override
 	public void handleReceiveMatchup(long id, long matchid, String team1name, String team2name, ArrayList<String> team1, ArrayList<String> team2, int round, String table){
 		super.handleReceiveMatchup(id, matchid, team1name, team2name, team1, team2, round, table);
-
 		if (t.getPermissionLevel() == Player.PARTICIPANT || t.getPermissionLevel() == Player.MODERATOR){
 			if (!inErrorState){
 				try{
+
 					SwissTournament swiss = (SwissTournament)t;
 
 					//get the round the match is meant for
@@ -98,7 +96,6 @@ public class IncomingCommandHandler extends AbstractIncomingCommandHandler{
 	@Override
 	public void handleReceiveBeginNewRound(long id, int round){
 		super.handleReceiveBeginNewRound(id, round);
-
 		if (t.getPermissionLevel() == Player.PARTICIPANT || t.getPermissionLevel() == Player.MODERATOR){
 			if (!inErrorState){
 				try{
@@ -108,7 +105,10 @@ public class IncomingCommandHandler extends AbstractIncomingCommandHandler{
 					if (round == rounds.size()){
 						//means we're adding the correct round
 						rounds.add(new Round(round,swiss));
-
+						((SwissTournament)t).notifyChanged();
+						//TODO CHANGE NOT NOTIFIED TO ROUND ADAPTER
+						
+						
 						//restart round timer
 						if(((SwissTournament) t).getSwissConfiguration().getStartTimerOnRoundChange())
 						{
@@ -146,6 +146,22 @@ public class IncomingCommandHandler extends AbstractIncomingCommandHandler{
 					Log.e("IncomingCommandHandler", "Exception in handleReceiveScore", e);
 					sendError(TournamentActivity.RESEND_ERROR_CODE);
 				}
+			}
+		}
+		else
+		{
+			//score from moderator received
+			try{
+				SwissTournament ss = (SwissTournament)t;
+				//get the round and match
+				Round r = ss.getRounds().get(round);
+				Match m = r.getMatches().get((int)matchid);
+
+				//setting scores will re-send it out to connected
+				m.setScores(Double.parseDouble(score1), Double.parseDouble(score2));
+
+			} catch (Exception e){
+				//AHHH something went wrong
 			}
 		}
 	}
@@ -213,7 +229,45 @@ public class IncomingCommandHandler extends AbstractIncomingCommandHandler{
 		super.handleReceivePlayers(id, players);
 		if (t.getPermissionLevel() == Player.PARTICIPANT || t.getPermissionLevel() == Player.MODERATOR){
 			if (!inErrorState){
-				t.setPlayers(SwissTournament.playerListToSwissPlayers(players));
+				ArrayList<Player> pNew = SwissTournament.playerListToSwissPlayers(players);
+				List<SwissPlayer> old = ((SwissTournament)(t)).getSwissPlayers();
+				//instead take new list, iterate through old list, and if player is found
+				for(int i=0;i<pNew.size();i++)
+				{
+					SwissPlayer play = (SwissPlayer) pNew.get(i);
+
+					//check if play is in old list
+					for(int j=0;j<old.size();j++)
+					{
+						//if so
+						if(play.equals(old.get(j)))
+						{
+							//copy over the scores etc. into the new player
+							List<Match> matches = play.getMatchesPlayed();
+							matches.clear();
+							matches.addAll(old.get(j).getMatchesPlayed());
+						}
+					}
+				}
+				
+				t.setPlayers(pNew);
+
+				//update local pid perrmission level if changed
+				for(int i=0;i<players.size();i++)
+				{
+					if(players.get(i).getUUID().equals(t.getPID()))
+					{
+						int perm = players.get(i).getPermissionsLevel();
+						if(perm==Player.DEVICELESS)
+						{
+							//connect as is leaving people as deviceless
+							//temporary fix
+							perm=Player.PARTICIPANT;
+						}
+						t.setPermissionLevel(perm);
+						Log.d("Incoming Command Handler Swiss", "Player is now at permission level: "+t.getPermissionLevel());
+					}
+				}
 			}
 		}
 	}

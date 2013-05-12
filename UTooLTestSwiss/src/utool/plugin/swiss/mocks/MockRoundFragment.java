@@ -1,10 +1,21 @@
 package utool.plugin.swiss.mocks;
 
+import java.util.List;
+
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.util.Log;
+import utool.plugin.activity.TournamentContainer;
+import utool.plugin.swiss.Match;
+import utool.plugin.swiss.MatchResult;
+import utool.plugin.swiss.Round;
+import utool.plugin.swiss.SwissTournament;
+import utool.plugin.swiss.TournamentActivity;
 import utool.plugin.swiss.RoundFragment;
 
 public class MockRoundFragment extends RoundFragment{
 	
+	int selectedPlayerIndex =-1;
 	public long getTid()
 	{
 		return tid;
@@ -52,11 +63,56 @@ public class MockRoundFragment extends RoundFragment{
 	 */
 	public void onSecondPlayerClick(int pos, boolean p1)
 	{
+		try{
 		super.onSecondPlayerClick(pos, p1);
+		}
+		catch(Exception e)
+		{
+			//thrown since Tournamnet Activity isnt set up
+			this.savedP1=p1;
+			this.savedPos=pos;
+			SwissTournament tourny = ((SwissTournament)TournamentContainer.getInstance(tid));
+
+			if(selectedPlayerIndex == pos && isSelP1 == p1)
+			{
+				//unselect current player
+				selectedPlayerIndex = -1;				
+			}
+			else
+			{
+				//else switch this player and the selected player
+
+				if(tourny.getRounds().size()>0)
+				{
+					//User verification if scores have been set
+					List<Round> rounds = tourny.getRounds();
+					List<Match> matches = rounds.get(round-1).getMatches();
+					if(matches.get(pos).getMatchResult()!=MatchResult.UNDECIDED || matches.get(selectedPlayerIndex).getMatchResult()!=MatchResult.UNDECIDED)
+					{
+	
+					}
+					else
+					{
+						doSwitch(pos, p1);	
+					}				
+				}
+			}
+		}
 	}
 	
 	public void doSwitch(int pos, boolean p1)
 	{
+		try
+		{
 		super.doSwitch(pos, p1);
+		}
+		catch(Exception e)
+		{
+			SwissTournament tourny = ((SwissTournament)TournamentContainer.getInstance(tid));
+			//perform the switch
+			tourny.switchPlayers(pos,p1,selectedPlayerIndex,isSelP1, round-1);
+
+			selectedPlayerIndex = -1;	
+		}
 	}
 }

@@ -1,9 +1,14 @@
 package utool.plugin.swiss;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
+
+import utool.networking.XmlMessageTypeException;
+import utool.networking.packet.PlayerMessage;
+import utool.networking.packet.PlayerMessage.MessageType;
 import utool.networking.packet.PluginTerminationMessage;
 import utool.plugin.Player;
 import utool.plugin.activity.IPluginServiceActivity;
@@ -22,11 +27,9 @@ import android.app.TimePickerDialog.OnTimeSetListener;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.os.RemoteException;
 import android.os.Vibrator;
-import android.preference.PreferenceManager;
 import android.support.v4.app.DialogFragment;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentActivity;
@@ -40,6 +43,7 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.view.Window;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.view.View.OnClickListener;
 import android.widget.Button;
@@ -55,6 +59,12 @@ import android.widget.Toast;
 @SuppressLint("ValidFragment")
 public class TournamentActivity extends FragmentActivity implements Observer, IPluginServiceActivity
 {
+
+	/**
+	 * Data reception threads
+	 */
+	private static HashMap<Long, Thread> receiveThreads = new HashMap<Long, Thread>();
+
 	/**
 	 * Tag for logging to console
 	 */
@@ -81,39 +91,21 @@ public class TournamentActivity extends FragmentActivity implements Observer, IP
 	private SwissTournament tournament;
 
 	/**
-	 * Shared preferences key for getting if the screen has been visited before
-	 */
-	private static final String FIRST_TIME_KEY = "utool.plugin.swiss.TournamentActivity";
-
-	/**
 	 * Request code used when going to tournament configuration screen
 	 */
 	public static final int TOURNAMENT_CONFIGURATION_ACTIVITY_REQUEST_CODE = 33;
 
 	/**
-	 * First helpful hints
-	 */
-	private static final String HELP_TEXT_1 = "Tap on the Tournament name to see the overall standings. Hold the name for tournament options.";
-
-	/**
-	 * second helpful hints
-	 */
-	private static final String HELP_TEXT_2 = "Swipe the screen, or tap the arrows, to view the next or previous rounds. If all the non-bye match scores have been set in a round, swipe the screen to generate the next round.";
-
-	/**
-	 * third helpful hints
-	 */
-	private static final String HELP_TEXT_3 = "Tap anywhere in the match row to set the scores.";
-
-	/**
-	 * fourth helpful hints
-	 */
-	private static final String HELP_TEXT_4 = "To view additional options open the application menu.";
-
-	/**
 	 * Timer for the round
 	 */
 	private Timer timer;
+
+
+	/**
+	 * Holds the index of the selected player.
+	 */
+	public int selectedPlayerIndex=-1;
+
 
 	/**
 	 * Runnable used by thread to receive messages
@@ -127,18 +119,36 @@ public class TournamentActivity extends FragmentActivity implements Observer, IP
 				{
 					String msg = pluginHelper.mICore.receive();
 					if (msg != null && !msg.equals("")){
+						PlayerMessage message = null;
+						try {
+							message = new PlayerMessage(msg);
+						} catch (XmlMessageTypeException e) {
+
+						}
+
 						if (msg.equals(PluginCommonActivityHelper.UTOOL_SOCKET_CLOSED_MESSAGE)){
 							return;
 						} else if (PluginTerminationMessage.isPluginTerminationMessage(msg)){
 							terminatePlugin();
+						} else if (message!=null&&message.getMessageType()==MessageType.PlayerRegister){
+							updatePlayerList(pluginHelper.mICore.getPlayerList());
+						} else {
+							SaxFeedParser s = new SaxFeedParser(new IncomingCommandHandler(tournament));
+							s.parse(msg);
 						}
-						SaxFeedParser s = new SaxFeedParser(new IncomingCommandHandler(tournament));
-						s.parse(msg);
+
 					}
+
 				}
 			} catch (RemoteException e) {
-				Toast.makeText(getApplicationContext(), "Error in connection, try reconnecting.", Toast.LENGTH_LONG).show();
-				Log.e("ReceiveRunnable", "Exception when receiving a runnable", e);
+				try
+				{
+
+				}
+				catch(Exception e2)
+				{
+					//couldnt notify user
+				}
 			}
 		}
 	};
@@ -152,17 +162,27 @@ public class TournamentActivity extends FragmentActivity implements Observer, IP
 	public void onCreate(Bundle savedInstanceState) 
 	{
 		super.onCreate(savedInstanceState);
-
-		Log.e(LOG_TAG,"Here 1");
-
+		this.requestWindowFeature(Window.FEATURE_NO_TITLE);
 		setContentView(R.layout.activity_tournament);
 
 		pluginHelper = new PluginMainActivityHelper(this, this);
 
 		//hide the new match frame layout
 		findViewById(R.id.frameLayout).setVisibility(View.GONE);
+		
+		try{
+			if (pluginHelper.isNewInstance()){
+				myOnCreate();
+			}
+		} catch (Exception e){
+			//not sure if this code is actually safe....
+		}
+	}
 
-		Log.e(LOG_TAG,"Here 2");
+	/**
+	 * time delayed oncreate to be called once the service is connected.
+	 */
+	public void myOnCreate(){
 		//Retrieve or instantiate the tournament
 		//Create tournament instances
 		tournament = (SwissTournament) TournamentContainer.getInstance(pluginHelper.getTournamentId());
@@ -179,12 +199,10 @@ public class TournamentActivity extends FragmentActivity implements Observer, IP
 			this.updatePlayerList(pluginHelper.getPlayerList());
 
 		}
-		Log.e(LOG_TAG,"Here 3");
 
 		tournament.setPermissionLevel(pluginHelper.getPermissionLevel());
 		//setup bridge
 		tournament.getBridge().setMainActivity(this);
-		Log.e(LOG_TAG,"Here 4");
 		//SETUP ACTIVITY MAIN SCREEN
 		//tournament name
 		Button tname = (Button)findViewById(R.id.tournament_name);
@@ -199,9 +217,6 @@ public class TournamentActivity extends FragmentActivity implements Observer, IP
 				startActivity(i);
 			}	
 		});
-
-
-		Log.e(LOG_TAG,"Here 5");
 
 		//set round textview
 		TextView round = (TextView)findViewById(R.id.tournament_round);
@@ -242,20 +257,6 @@ public class TournamentActivity extends FragmentActivity implements Observer, IP
 		mPager = (ViewPager) findViewById(R.id.pager);
 		mPager.setAdapter(mAdapter);
 
-		//first time user stuff
-		//determine if help has been played yet
-		SharedPreferences prefs  = PreferenceManager.getDefaultSharedPreferences(this);
-
-		// use a default value to true (is first time)
-		boolean firstTime= prefs.getBoolean(FIRST_TIME_KEY, true); 
-		if(firstTime)
-		{
-			this.setupHelp();
-
-			//setup preferences to remember help has been played
-			prefs.edit().putBoolean(FIRST_TIME_KEY, false).commit();
-		}
-
 		//Setup support for swiping generating the next round
 		mPager.setOnPageChangeListener(new OnPageChangeListener(){
 			@Override
@@ -278,8 +279,6 @@ public class TournamentActivity extends FragmentActivity implements Observer, IP
 
 		});
 
-		Log.e(LOG_TAG,"Here 6");
-
 		//round timer: default to not there
 		TextView r = (TextView)findViewById(R.id.roundTimer);
 		r.setText("");
@@ -298,9 +297,15 @@ public class TournamentActivity extends FragmentActivity implements Observer, IP
 			timer = new Timer(true);
 			timer.scheduleAtFixedRate(task, 0, 1000);
 		}
+		//just in case set somehow, restore to default
+		config.setTimerTerminatedPrematurely(false);
 
-		Log.e(LOG_TAG,"Here 7");
+		////////////RESUME/////////////
 
+		if(mAdapter!=null)
+		{
+			mAdapter.notifyDataSetChanged();
+		}
 	}
 
 	/**
@@ -323,6 +328,8 @@ public class TournamentActivity extends FragmentActivity implements Observer, IP
 		Log.e(LOG_TAG,"Passed in: "+p.toString());
 
 		Log.e(LOG_TAG,"Were in: "+pt.toString());
+
+		boolean playerAdded = false;
 		//go through each player in pt and see if they are in p. If yes, then update old player to new player info
 		for(int i=0;i<pt.size();i++)
 		{
@@ -344,6 +351,7 @@ public class TournamentActivity extends FragmentActivity implements Observer, IP
 
 			if(index==-1)
 			{
+				playerAdded = true;
 				//remove player
 				Log.e(LOG_TAG,"Removed Player: "+pt.get(i).getName());
 				//player i was removed from pt in edit screen
@@ -360,8 +368,15 @@ public class TournamentActivity extends FragmentActivity implements Observer, IP
 					{
 						Match t = mts.get(m);
 						//remove the old match from the player's internal list
-						t.getPlayerTwo().getMatchesPlayed().remove(t.getPlayerTwo().getMatchesPlayed().size()-1);
-						mts.set(m, new Match(SwissPlayer.BYE, t.getPlayerTwo(), tournament.getRounds().get(tournament.getRounds().size()-1)));						
+						if(!t.getPlayerTwo().equals(SwissPlayer.BYE))
+						{
+							t.getPlayerTwo().getMatchesPlayed().remove(t.getPlayerTwo().getMatchesPlayed().size()-1);
+							mts.set(m, new Match(SwissPlayer.BYE, t.getPlayerTwo(), tournament.getRounds().get(tournament.getRounds().size()-1)));						
+						}
+						else
+						{
+							mts.remove(m);//double bye match
+						}
 						tournament.notifyChanged();
 						break;
 					}
@@ -369,15 +384,22 @@ public class TournamentActivity extends FragmentActivity implements Observer, IP
 					{
 						Match t = mts.get(m);
 						//remove the old match from the player's internal list
-						t.getPlayerOne().getMatchesPlayed().remove(t.getPlayerOne().getMatchesPlayed().size()-1);
-						mts.set(m, new Match(t.getPlayerOne(), SwissPlayer.BYE, tournament.getRounds().get(tournament.getRounds().size()-1)));
+						if(!t.getPlayerOne().equals(SwissPlayer.BYE))
+						{
+							t.getPlayerOne().getMatchesPlayed().remove(t.getPlayerOne().getMatchesPlayed().size()-1);
+							mts.set(m, new Match(t.getPlayerOne(), SwissPlayer.BYE, tournament.getRounds().get(tournament.getRounds().size()-1)));
+						}
+						else
+						{
+							mts.remove(m);//double BYE match
+						}
 						tournament.notifyChanged();
 						break;
 					}
 				}
 			}
 		}
-		boolean playerAdded = false;
+
 
 		//check for addition
 		for(int i =0;i<isPlayerInPt.length;i++)
@@ -439,7 +461,7 @@ public class TournamentActivity extends FragmentActivity implements Observer, IP
 		if(playerAdded)
 		{
 			SwissConfiguration c = tournament.getSwissConfiguration();
-			int r = c.getNumRounds();
+			final int r = c.getNumRounds();
 			double d=Math.log(pt.size()) / Math.log(2.0);
 			int n = (int)d;
 			if(d>n)
@@ -447,7 +469,7 @@ public class TournamentActivity extends FragmentActivity implements Observer, IP
 				n++;
 			}
 
-
+			final int n_fin = n;
 
 			//remove matchups of 2 byes
 
@@ -456,30 +478,34 @@ public class TournamentActivity extends FragmentActivity implements Observer, IP
 
 
 			//if the recommended number of rounds has increased...
-			if(r!=n)
+			if(r!=n && tournament.getPermissionLevel() == Player.HOST)
 			{
 				//Create alert asking if they want to increase the number of rounds 
 				//due to the increase in the number of players
+				this.runOnUiThread(new Runnable(){
 
-				new AlertDialog.Builder(this)
-				.setTitle("Warning")
-				.setMessage("Since the playerlist has been altered, would you like to change the number of rounds from "+r+" to the recommended number of "+n+"?")
-				.setIcon(android.R.drawable.ic_dialog_alert)
-				.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+					public void run(){
+						new AlertDialog.Builder(TournamentActivity.this)
+						.setTitle("Warning")
+						.setMessage("Since the playerlist has been altered, would you like to change the number of rounds from "+r+" to the recommended number of "+n_fin+"?")
+						.setIcon(android.R.drawable.ic_dialog_alert)
+						.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
 
-					public void onClick(DialogInterface dialog, int whichButton) 
-					{
-						//Yes clicked -> increase num rounds in swiss config
-						SwissConfiguration c = tournament.getSwissConfiguration();
-						double d=Math.log(tournament.getPlayers().size()) / Math.log(2.0);
-						int n = (int)d;
-						if(d>n)
-						{
-							n++;
-						}
-						c.setNumRounds(n);
-					}})
-					.setNegativeButton("No",  null).show();
+							public void onClick(DialogInterface dialog, int whichButton) 
+							{
+								//Yes clicked -> increase num rounds in swiss config
+								SwissConfiguration c = tournament.getSwissConfiguration();
+								double d=Math.log(tournament.getPlayers().size()) / Math.log(2.0);
+								int n = (int)d;
+								if(d>n)
+								{
+									n++;
+								}
+								c.setNumRounds(n);
+							}})
+							.setNegativeButton("No",  null).show();
+					}
+				});
 			}
 		}
 
@@ -487,15 +513,21 @@ public class TournamentActivity extends FragmentActivity implements Observer, IP
 		IncomingCommandHandler inc = new IncomingCommandHandler(tournament);
 		inc.handleReceiveError(TournamentActivity.RESEND_ERROR_CODE, "", "", "");
 
+		this.updateObserver(null);
 	}
 
 	public void onResume()
 	{
 		//update the gui on resume in case its needed
 		super.onResume();
-		if(mAdapter!=null)
-		{
-			mAdapter.notifyDataSetChanged();
+		//		if(mAdapter!=null)
+		//		{
+		//			mAdapter.notifyDataSetChanged();
+		//		}
+
+		if (!pluginHelper.isNewInstance() && pluginHelper.mICore != null){
+			tournament = (SwissTournament)TournamentContainer.getInstance(pluginHelper.getTournamentId());
+			this.updateObserver(null);
 		}
 	}
 
@@ -548,80 +580,112 @@ public class TournamentActivity extends FragmentActivity implements Observer, IP
 	 */
 	private void generateNextRound()
 	{
-		List<Match> matches = tournament.getRounds().get(mPager.getCurrentItem()).getMatches();
-
-		//set all bye matches to the opposing player as winner
-		for(int i=0;i<matches.size();i++)
+		//ONLY HOSTS can generate the next round
+		if(tournament.getPermissionLevel()==Player.HOST)
 		{
-			if(matches.get(i).getMatchResult() == MatchResult.UNDECIDED)
-			{
-				//determine which player is the bye
-				if(matches.get(i).getPlayerTwo().equals(SwissPlayer.BYE))
-				{
-					//set player one as winner
-					matches.get(i).setScores(tournament.getSwissConfiguration().getWinScore(), tournament.getSwissConfiguration().getLossScore(), MatchResult.PLAYER_ONE);
-				}
-				else
-				{
-					//set player two as winner
-					matches.get(i).setScores(tournament.getSwissConfiguration().getLossScore(), tournament.getSwissConfiguration().getWinScore(), MatchResult.PLAYER_TWO);
-				}
+			List<Match> matches = tournament.getRounds().get(mPager.getCurrentItem()).getMatches();
 
+			//set all bye matches to the opposing player as winner
+			for(int i=0;i<matches.size();i++)
+			{
+				if(matches.get(i).getMatchResult() == MatchResult.UNDECIDED)
+				{
+					double win = tournament.getSwissConfiguration().getWinScore();
+					double loss = tournament.getSwissConfiguration().getLossScore();
+					OutgoingCommandHandler out = new OutgoingCommandHandler(tournament);
+					//determine which player is the bye
+					if(matches.get(i).getPlayerTwo().equals(SwissPlayer.BYE))
+					{
+						//set player one as winner
+						matches.get(i).setScores(win, loss, MatchResult.PLAYER_ONE);
+						//Send to connected
+						out.handleSendScore(-1, i, matches.get(i).getPlayerOne().getUUID().toString(), matches.get(i).getPlayerTwo().getUUID().toString(), win, loss, mPager.getCurrentItem());
+						
+					}
+					else
+					{
+						//set player two as winner
+						matches.get(i).setScores(loss, win, MatchResult.PLAYER_TWO);
+						//send to connected
+						out.handleSendScore(-1, i, matches.get(i).getPlayerOne().getUUID().toString(), matches.get(i).getPlayerTwo().getUUID().toString(), loss, win, mPager.getCurrentItem());
+					}
+
+				}
+			}
+
+			tournament.generateNextRound();
+
+			//round timer 
+			//if timer had been running, start it again
+			if(tournament.getSwissConfiguration().getStartTimerOnRoundChange())
+			{
+				tournament.getSwissConfiguration().startTimer();
+				//update GUI every minute
+				TimerTask task = new TimerTask(){
+					public void run() {
+						updateTimer();
+					}
+				};
+				timer = new Timer(true);
+				timer.scheduleAtFixedRate(task, 0, 1000);
+			}
+
+			mAdapter.notifyDataSetChanged();
+
+
+			//notify participant connections of new round
+			OutgoingCommandHandler out = new OutgoingCommandHandler(tournament);
+			int roundnum = tournament.getRounds().size()-1;
+			out.handleSendBeginNewRound(-1, tournament.getRounds().size()-1);
+
+			matches = tournament.getRounds().get(tournament.getRounds().size()-1).getMatches();
+			for (int i = 0; i < matches.size(); i++){
+				String[] team1 = new String[1];
+				String[] team2 = new String[1];
+
+				team1[0] = matches.get(i).getPlayerOne().getUUID().toString();
+				team2[0] = matches.get(i).getPlayerTwo().getUUID().toString();
+				out.handleSendMatchup(-1l, i, null, null, team1, team2, roundnum, null);
 			}
 		}
-
-		tournament.generateNextRound();
-
-		//round timer 
-		//if timer had been running, start it again
-		if(tournament.getSwissConfiguration().getStartTimerOnRoundChange())
-		{
-			tournament.getSwissConfiguration().startTimer();
-			//update GUI every minute
-			TimerTask task = new TimerTask(){
-				public void run() {
-					updateTimer();
-				}
-			};
-			timer = new Timer(true);
-			timer.scheduleAtFixedRate(task, 0, 1000);
-		}
-
-		mAdapter.notifyDataSetChanged();
-
-
-		//notify participant connections of new round
-		OutgoingCommandHandler out = new OutgoingCommandHandler(tournament);
-		int roundnum = tournament.getRounds().size()-1;
-		out.handleSendBeginNewRound(-1, tournament.getRounds().size()-1);
-
-		matches = tournament.getRounds().get(tournament.getRounds().size()-1).getMatches();
-		for (int i = 0; i < matches.size(); i++){
-			String[] team1 = new String[1];
-			String[] team2 = new String[1];
-
-			team1[0] = matches.get(i).getPlayerOne().getUUID().toString();
-			team2[0] = matches.get(i).getPlayerTwo().getUUID().toString();
-			out.handleSendMatchup(-1l, i, null, null, team1, team2, roundnum, null);
-		}
 	}
+
+	@Override
+	public void onBackPressed(){
+		Log.e("adiao","Sel:"+this.selectedPlayerIndex);
+		if(this.selectedPlayerIndex==-1){
+			super.onBackPressed();
+		}
+		else
+		{
+			try{
+				//fragment.unselect();
+				this.selectedPlayerIndex=-1;
+				this.mAdapter.notifyDataSetChanged();
+			} catch (Exception e){
+				//hide it
+			}
+		}	
+	}
+
+
 	/**
 	 * Displays the help messages for the user
 	 */
 	private void setupHelp() 
 	{
-		// Create and show the warning dialog.
-		DialogFragment warning = new HelpDialog(HELP_TEXT_4);
-		warning.show(getSupportFragmentManager(), "Help Dialog");
-
-		warning = new HelpDialog(HELP_TEXT_3);
-		warning.show(getSupportFragmentManager(), "Help Dialog");
-
-		warning = new HelpDialog(HELP_TEXT_2);
-		warning.show(getSupportFragmentManager(), "Help Dialog");
-
-		warning = new HelpDialog(HELP_TEXT_1);
-		warning.show(getSupportFragmentManager(), "Help Dialog");
+		// Create and show the help dialog.
+		final Dialog dialog = new Dialog(TournamentActivity.this);
+		dialog.setContentView(R.layout.swiss_tournament_help);
+		dialog.setTitle("UTooL Swiss System Help");
+		dialog.setCancelable(true);
+		Button closeButton = (Button) dialog.findViewById(R.id.help_close_button);
+		closeButton.setOnClickListener(new Button.OnClickListener() {      
+			public void onClick(View view) { 
+				dialog.dismiss();     
+			}
+		});
+		dialog.show();
 	}
 
 	@Override
@@ -663,13 +727,11 @@ public class TournamentActivity extends FragmentActivity implements Observer, IP
 			}
 			break;
 		case R.id.menu_restart:
-			TournamentContainer.clearInstance(pluginHelper.getTournamentId());
-			Intent intent = getIntent();
-
-			//update list of players before restarting
-			getIntent().putExtra("playerList", tournament.getPlayers());
-			startActivity(intent);
-			finish();
+			tournament.clearTournament();
+			tournament.generateNextRound();
+			this.updateObserver(null);
+			IncomingCommandHandler inc = new IncomingCommandHandler(tournament);
+			inc.handleReceiveError(TournamentActivity.RESEND_ERROR_CODE, "", "", "");
 			break;
 		case R.id.options_part:
 			if(tournament.getPermissionLevel()!=Player.HOST)
@@ -711,6 +773,7 @@ public class TournamentActivity extends FragmentActivity implements Observer, IP
 			};
 
 			TimePickerDialog t = new TimePickerDialog(this, 0, list , 0, (int)(config.getRoundTimerSeconds()/60), true);
+			t.setTitle("Set round timer amount:");
 			t.show();
 			break;
 		default:
@@ -730,6 +793,7 @@ public class TournamentActivity extends FragmentActivity implements Observer, IP
 			}
 			SwissConfiguration config = tournament.getSwissConfiguration();
 			if (config != null){
+				config.setTimerTerminatedPrematurely(true);
 				config.setRoundTimerSeconds(0);
 			}
 			pluginHelper.mICore.close();
@@ -832,16 +896,22 @@ public class TournamentActivity extends FragmentActivity implements Observer, IP
 				}
 				else if(time==0)
 				{
-					//timer is finished, go off
-					Toast.makeText(getApplicationContext(), "Round is finished!", Toast.LENGTH_SHORT).show();
-					//Vibrate
-					Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
-					// 2. Vibrate in a Pattern with 500ms on, 500ms off for 5 times
-					long[] pattern = { 0, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500};
-					v.vibrate(pattern, -1);
+					if(!config.wasTimerTerminated())
+					{
+						//timer is finished, go off
+						Toast.makeText(TournamentActivity.this, "Round is finished!", Toast.LENGTH_SHORT).show();
+						//Vibrate
+						Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+						// 2. Vibrate in a Pattern with 500ms on, 500ms off for 5 times
+						long[] pattern = { 0, 500, 500, 500, 500, 500, 500, 500, 500, 500, 500};
+						v.vibrate(pattern, -1);
 
-					tv.setText("0:00:00");
-
+						tv.setText("0:00:00");
+					}
+					else
+					{
+						Log.e("Timer","Vib surpressed");
+					}
 				}
 				else if(time<60)
 				{
@@ -858,7 +928,7 @@ public class TournamentActivity extends FragmentActivity implements Observer, IP
 				else if(time == 60*5)//5 minutes
 				{
 					Log.e(LOG_TAG,"5 minutes!!!!" +time);
-					Toast.makeText(getApplicationContext(), "5 minutes remaining!", Toast.LENGTH_SHORT).show();
+					Toast.makeText(TournamentActivity.this, "5 minutes remaining!", Toast.LENGTH_SHORT).show();
 					//vibrate
 					Vibrator v = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
 					// 1. Vibrate for 1000 milliseconds
@@ -932,49 +1002,58 @@ public class TournamentActivity extends FragmentActivity implements Observer, IP
 		@Override
 		public int getCount() 
 		{
-			//	Log.d(LOG_TAG,"Size: "+tournament.getRounds().size());
-			//update the round textview
-			TextView round = (TextView)findViewById(R.id.tournament_round);
-			//determine if final round
-			if((tournament.getRounds().size()<tournament.getSwissConfiguration().getNumRounds()))
-			{
-				round.setText("Round "+(mPager.getCurrentItem()+1));
-			}
-			else
-			{
-				//tournament completed
-				//determins if displaying final round
-				if(mPager.getCurrentItem()+1==tournament.getRounds().size())
-				{
-					round.setText("Final Round ("+(mPager.getCurrentItem()+1)+")");
-				}
-				else
-				{
-					round.setText("Round "+(mPager.getCurrentItem()+1));
-				}
-			}
+			runOnUiThread(new Runnable(){
 
-			//show the right arrow if the next screen can be generated, or not on the last screen
-			if(mPager.getCurrentItem()<tournament.getRounds().size()-1||canGenerateNextRound())
-			{
-				//enable going to the right
-				findViewById(R.id.right_arrow).setVisibility(View.VISIBLE);
-			}
-			else
-			{
-				findViewById(R.id.right_arrow).setVisibility(View.INVISIBLE);
-			}
+				@Override
+				public void run() {
+					//update the round textview
+					TextView round = (TextView)findViewById(R.id.tournament_round);
+					//determine if final round
+					if((tournament.getRounds().size()<tournament.getSwissConfiguration().getNumRounds()))
+					{
+						round.setText("Round "+(mPager.getCurrentItem()+1));
+					}
+					else
+					{
+						//tournament completed
+						//determins if displaying final round
+						if(mPager.getCurrentItem()+1==tournament.getRounds().size() && tournament.getPermissionLevel() == Player.HOST)
+						{
+							round.setText("Final Round ("+(mPager.getCurrentItem()+1)+")");
+						}
+						else
+						{
+							round.setText("Round "+(mPager.getCurrentItem()+1));
+						}
+					}
 
-			if(mPager.getCurrentItem()==0)
-			{
-				//disable going to the left
-				findViewById(R.id.left_arrow).setVisibility(View.INVISIBLE);
-			}
-			else
-			{
-				findViewById(R.id.left_arrow).setVisibility(View.VISIBLE);
-			}
-			//Log.d(LOG_TAG, "Size: "+tournament.getRounds().size());
+
+					//show the right arrow if the next screen can be generated, or not on the last screen
+					if(mPager.getCurrentItem()<tournament.getRounds().size()-1||(canGenerateNextRound()&&tournament.getPermissionLevel()==Player.HOST))
+					{
+						//enable going to the right
+						findViewById(R.id.right_arrow).setVisibility(View.VISIBLE);
+					}
+					else
+					{
+						findViewById(R.id.right_arrow).setVisibility(View.INVISIBLE);
+					}
+
+					if(mPager.getCurrentItem()==0)
+					{
+						//disable going to the left
+						findViewById(R.id.left_arrow).setVisibility(View.INVISIBLE);
+					}
+					else
+					{
+						findViewById(R.id.left_arrow).setVisibility(View.VISIBLE);
+					}
+					//Log.d(LOG_TAG, "Size: "+tournament.getRounds().size());
+
+				}
+
+			});
+
 			return tournament.getRounds().size();
 		}
 
@@ -998,24 +1077,22 @@ public class TournamentActivity extends FragmentActivity implements Observer, IP
 	 */
 	protected void goToScores(int mid)
 	{
-		if(tournament.getPermissionLevel()==Player.HOST)
-		{
-			Intent i = pluginHelper.getNewIntent(TournamentActivity.this, ScoresActivity.class);
-			i.putExtra("round", (mPager.getCurrentItem()));
-			i.putExtra("match", mid);
-			startActivity(i);
-		}
+		Intent i = pluginHelper.getNewIntent(TournamentActivity.this, ScoresActivity.class);
+		i.putExtra("round", (mPager.getCurrentItem()));
+		i.putExtra("match", mid);
+		startActivity(i);
 	}
 
 
 	@Override
 	public void runOnServiceConnected() {
 		try {
+
+			myOnCreate();
+
 			//create thread to get received messages
 			Log.d(LOG_TAG, "Service connected, isNewInstance=" + pluginHelper.isNewInstance());
 			if (pluginHelper.isNewInstance()){
-				Thread t  = new Thread(receiveRunnable);
-				t.start();
 
 				// Host/Client specific code
 				if (pluginHelper.mICore.isClient()){
@@ -1064,12 +1141,15 @@ public class TournamentActivity extends FragmentActivity implements Observer, IP
 				}
 			}
 
+			Thread receiveThread = receiveThreads.get(pluginHelper.getTournamentId());
+			if (pluginHelper.isNewInstance() || receiveThread == null || (receiveThread != null && !receiveThread.isAlive())){
+				Log.d("KOTH", "Creating receive thread");
+				receiveThread = new Thread(receiveRunnable);
+				receiveThread.start();
+				receiveThreads.put(pluginHelper.getTournamentId(), receiveThread);
+			}
 
 		} catch (RemoteException e) {
-			Log.e(LOG_TAG, e.toString());
-			Toast t = new Toast(TournamentActivity.this);
-			t.setText("Error connecting to core service");
-			t.show();
 		}
 
 	}
@@ -1116,35 +1196,32 @@ public class TournamentActivity extends FragmentActivity implements Observer, IP
 
 	public void updateObserver(Object observedObject)
 	{
-		if (observedObject instanceof SwissTournament){
-			//SwissTournament tournament = (SwissTournament)observedObject;
-			if(mAdapter!=null)
-			{
-				this.runOnUiThread(new Runnable(){
-					@Override
-					public void run() {
-						try{
-							//update round timer if needed
-							if(tournament.getSwissConfiguration().getSecondsRemaining()!=-1&&timer==null)
-							{
-								Log.d(LOG_TAG,"Updating round timer");
-								//create the timer
-								TimerTask task = new TimerTask(){
-									public void run() {
-										updateTimer();
-									}
-								};
-								timer = new Timer(true);
-								timer.scheduleAtFixedRate(task, 0, 1000);
-							}
-							//update the gui
-							mAdapter.notifyDataSetChanged();
-						} catch (IllegalStateException e){
-							Log.e("Observer", "Exception thrown from mAdapter", e);
+		if(mAdapter!=null)
+		{
+			this.runOnUiThread(new Runnable(){
+				@Override
+				public void run() {
+					try{
+						//update round timer if needed
+						if(tournament.getSwissConfiguration().getSecondsRemaining()!=-1&&timer==null)
+						{
+							Log.d(LOG_TAG,"Updating round timer");
+							//create the timer
+							TimerTask task = new TimerTask(){
+								public void run() {
+									updateTimer();
+								}
+							};
+							timer = new Timer(true);
+							timer.scheduleAtFixedRate(task, 0, 1000);
 						}
+						//update the gui
+						mAdapter.notifyDataSetChanged();
+					} catch (IllegalStateException e){
+						Log.e("Observer", "Exception thrown from mAdapter", e);
 					}
-				});
-			}
+				}
+			});
 		}
 	}
 

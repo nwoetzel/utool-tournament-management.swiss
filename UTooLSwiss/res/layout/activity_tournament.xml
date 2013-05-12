@@ -17,10 +17,10 @@
         android:layout_height="wrap_content"
         android:layout_alignParentLeft="true"
         android:layout_alignParentRight="true"
-        android:layout_alignParentTop="true"
         android:text="Tournament Name"
         android:textSize="22sp"
-        android:textStyle="bold" />
+        android:textStyle="bold"
+        android:layout_below="@+id/progressBar1"/>
 
     <TextView
         android:id="@+id/roundTimer"
@@ -79,4 +79,36 @@
 
     </FrameLayout>
 
+        <TextView
+        android:id="@+id/profileManagementTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
+        android:text="Swiss System"
+        android:textAppearance="?android:attr/textAppearanceLarge"
+        android:textColor="#FF0000"
+        android:textSize="32sp" />
+
+
+    <TextView
+        android:id="@+id/utool_long_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/left_arrow"
+        android:layout_below="@+id/profileManagementTitle"
+        android:gravity="center"
+        android:text="Universal Tournament Organization Tool"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:textColor="#595959" />
+
+    <ProgressBar
+        android:id="@+id/progressBar1"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="wrap_content"
+        android:layout_height="2sp"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentRight="true"
+        android:layout_below="@+id/utool_long_title" 
+        android:progress="100" />
 </RelativeLayout>

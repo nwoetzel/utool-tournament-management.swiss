@@ -17,7 +17,7 @@
         android:layout_height="wrap_content"
         android:layout_alignParentLeft="true"
         android:layout_alignParentRight="true"
-        android:layout_alignParentTop="true"
+        android:layout_below="@+id/lineBreak"
         android:text="Tournament Name"
         android:textSize="32sp"
         android:textStyle="bold" />
@@ -81,5 +81,37 @@
             android:text="New Match" />
 
     </FrameLayout>
+    
+     <TextView
+        android:id="@+id/title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
+        android:text="Swiss System"
+        android:textAppearance="?android:attr/textAppearanceLarge"
+        android:textColor="#FFFF0000"
+        android:textSize="24sp" />
+
+    <TextView
+        android:id="@+id/utoolText"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/title"
+        android:layout_centerHorizontal="true"
+        android:text="Universal Tournament Organization Tool"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:textColor="#595959"
+        android:textSize="10sp" />
+
+    <ProgressBar
+        android:id="@+id/lineBreak"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="wrap_content"
+        android:layout_height="2sp"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentRight="true"
+        android:layout_below="@+id/utoolText"
+        android:progress="100" />
 
 </RelativeLayout>

@@ -6,6 +6,8 @@ import utool.plugin.activity.AbstractPluginCommonTabActivity;
 import android.content.Intent;
 import android.content.res.Resources;
 import android.os.Bundle;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.TabHost;
 import android.widget.TabHost.TabSpec;
 
@@ -21,7 +23,12 @@ public class SwissOptionsTabActivity extends AbstractPluginCommonTabActivity {
 	@SuppressWarnings("deprecation")
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		this.requestWindowFeature(Window.FEATURE_NO_TITLE);
+
 		setContentView(R.layout.swiss_options_main);
+
+		//Hide keyboard
+		getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
 
 		Resources ressources = getResources(); 
 		TabHost tabHost = getTabHost(); 
@@ -105,5 +112,60 @@ public class SwissOptionsTabActivity extends AbstractPluginCommonTabActivity {
 		}
 
 		return tdata;
+	}
+
+
+	/**
+	 * Returns a String representation of the tournament matches without html formating
+	 * @param t reference to the tournament
+	 * @return tournament matchups so far
+	 */
+	public static String getTournamentDataText(SwissTournament t) 
+	{
+		String tdata = "";
+
+		if(t!=null)
+		{
+			List<Round> rounds = t.getRounds();
+			//for each write out results
+
+			for(int r = 0;r<rounds.size();r++)
+			{
+				List<Match> m = rounds.get(r).getMatches();
+
+				//round statement
+				tdata+="Round "+(r+1)+": "+"\n";
+				//matchups in round
+				for(int i=0; i<m.size();i++)
+				{
+					//determine if a name should be bolded
+					Match c = m.get(i);
+					if(c.getMatchResult()==MatchResult.PLAYER_ONE)
+					{
+						//player 1 is winner therefore bold p1
+						tdata+=c.getPlayerOne().getName() +" vs. "+c.getPlayerTwo().getName() +"\n";	
+					}
+					else if(c.getMatchResult()==MatchResult.PLAYER_TWO)
+					{
+						//player 2 is winner therefore bold p2
+						tdata+=c.getPlayerOne().getName() +" vs. "+c.getPlayerTwo().getName()+"\n";	
+					}
+					else
+					{
+						//no winner
+						tdata+=c.getPlayerOne().getName() +" vs. "+c.getPlayerTwo().getName()+"\n";
+					}
+
+				}
+
+			}
+		}
+		else
+		{
+			tdata="Tournament was null";		
+		}
+
+		return tdata;
+
 	}
 }

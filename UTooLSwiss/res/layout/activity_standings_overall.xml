@@ -8,9 +8,9 @@
     <TextView
         android:id="@+id/order_by_rank_overall"
         android:layout_width="wrap_content"
-        android:layout_height="25dp"
+        android:layout_height="40dp"
         android:layout_alignParentLeft="true"
-        android:layout_alignParentTop="true"
+		android:layout_below="@+id/progressBar1"
         android:clickable="true"
         android:gravity="center"
         android:text="Rank  "
@@ -24,19 +24,19 @@
         android:layout_height="wrap_content"
         android:layout_above="@+id/overall_standings_list"
         android:layout_alignParentRight="true"
-        android:layout_alignParentTop="true"
+        android:layout_alignTop="@+id/order_by_t_overall"
         android:gravity="center"
         android:text="  S   "
         android:textAppearance="?android:attr/textAppearanceLarge"
         android:textColor="#FFFFFF"
-        android:textSize="15sp" />
-
+        android:textSize="15sp"/>
+    
     <TextView
         android:id="@+id/order_by_name_overall"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_above="@+id/overall_standings_list"
-        android:layout_alignParentTop="true"
+        android:layout_alignTop="@+id/order_by_rank_overall"
         android:layout_toLeftOf="@+id/order_by_w_overall"
         android:layout_toRightOf="@+id/order_by_rank_overall"
         android:gravity="center_vertical"
@@ -53,13 +53,12 @@
         android:layout_below="@+id/order_by_rank_overall" >
     </ListView>
 
-
     <TextView
         android:id="@+id/order_by_l_overall"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_above="@+id/overall_standings_list"
-        android:layout_alignParentTop="true"
+        android:layout_alignTop="@+id/order_by_w_overall"
         android:layout_toLeftOf="@+id/order_by_t_overall"
         android:gravity="center"
         android:text="  L  "
@@ -67,13 +66,12 @@
         android:textColor="#FFFFFF"
         android:textSize="15sp" />
 
-
     <TextView
         android:id="@+id/order_by_w_overall"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_above="@+id/overall_standings_list"
-        android:layout_alignParentTop="true"
+        android:layout_alignTop="@+id/order_by_name_overall"
         android:layout_toLeftOf="@+id/order_by_l_overall"
         android:gravity="center"
         android:text="  W  "
@@ -81,18 +79,49 @@
         android:textColor="#FFFFFF"
         android:textSize="15sp" />
 
-
-
     <TextView
         android:id="@+id/order_by_t_overall"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_above="@+id/overall_standings_list"
-        android:layout_alignParentTop="true"
+        android:layout_alignTop="@+id/order_by_l_overall"
         android:layout_toLeftOf="@+id/order_by_s_overall"
         android:gravity="center"
         android:text="  T  "
         android:textAppearance="?android:attr/textAppearanceLarge"
         android:textSize="15sp" />
+    
+    
+      <TextView
+        android:id="@+id/profileManagementTitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
+        android:text="Swiss System"
+        android:textAppearance="?android:attr/textAppearanceLarge"
+        android:textColor="#FF0000"
+        android:textSize="32sp" />
+
+    <ProgressBar
+        android:id="@+id/progressBar1"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="wrap_content"
+        android:layout_height="2sp"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentRight="true"
+        android:layout_below="@+id/utool_long_title" 
+        android:progress="100" />
+
+    <TextView
+        android:id="@+id/utool_long_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/profileManagementTitle"
+        android:layout_centerHorizontal="true"
+        android:gravity="center"
+        android:text="Universal Tournament Organization Tool"
+        android:textAppearance="?android:attr/textAppearanceSmall"
+        android:textColor="#595959" />
 
 </RelativeLayout>

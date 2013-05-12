@@ -1,23 +1,17 @@
 package utool.plugin.swiss;
-import java.math.RoundingMode;
-import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-
 import utool.plugin.ImageDecodeTask;
 import utool.plugin.Player;
 import utool.plugin.activity.AbstractPluginCommonActivity;
 import utool.plugin.activity.TournamentContainer;
 import utool.plugin.swiss.TournamentActivity.HelpDialog;
-import android.annotation.TargetApi;
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
 import android.support.v4.app.DialogFragment;
 import android.util.Log;
 import android.view.ContextMenu;
@@ -27,6 +21,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.Window;
 import android.view.ContextMenu.ContextMenuInfo;
 import android.view.View.OnTouchListener;
 import android.view.ViewGroup;
@@ -96,11 +91,6 @@ public class OverallStandingsActivity extends AbstractPluginCommonActivity
 	private static final String LOG_TAG = "SS Overall Standings Activity";
 
 	/**
-	 * Shared preferences key for getting if the screen has been visited before
-	 */
-	private static final String FIRST_TIME_KEY = "utool.plugin.swiss.OverallStandings";
-
-	/**
 	 * Holds the explanation for rank
 	 */
 	private static final String RANK_HELP = "Rank is how the player is doing in the tournament. A rank of one indicates that player is in first place.";
@@ -145,7 +135,7 @@ public class OverallStandingsActivity extends AbstractPluginCommonActivity
 	public void onCreate(Bundle savedInstanceState)
 	{
 		super.onCreate(savedInstanceState);
-
+		this.requestWindowFeature(Window.FEATURE_NO_TITLE);
 		setContentView(R.layout.activity_standings_overall);
 
 		//setup adapter
@@ -160,19 +150,6 @@ public class OverallStandingsActivity extends AbstractPluginCommonActivity
 
 		ad=new OverallStandingsAdapter(this, R.id.overall_standings_list, players);
 		l.setAdapter(ad);
-
-		//determine if help has been played yet
-		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
-
-		// use a default value to true (is first time)
-		boolean firstTime= prefs.getBoolean(FIRST_TIME_KEY, true); 
-		if(firstTime)
-		{
-			this.setupHelpPopups();
-
-			//setup preferences to remember help has been played
-			prefs.edit().putBoolean(FIRST_TIME_KEY, false).commit();
-		}
 
 		//Setup ordering of the columns
 		TextView rank = (TextView) findViewById(R.id.order_by_rank_overall);
@@ -293,31 +270,55 @@ public class OverallStandingsActivity extends AbstractPluginCommonActivity
 		{
 			warning = new HelpDialog(RANK_HELP);
 			warning.show(getSupportFragmentManager(), "Explanation of Rank");	
+
+			ArrayList<SwissPlayer> players = orderByColumn(ORDER_BY_RANK);
+			ad.setPlayers(players);
+			ad.notifyDataSetChanged();
 		}
 		else if(v.getId() == R.id.order_by_name_overall)
 		{
 			warning = new HelpDialog(NAME_HELP);
 			warning.show(getSupportFragmentManager(), "Explanation of Name");	
+
+			ArrayList<SwissPlayer> players = orderByColumn(ORDER_BY_NAME);
+			ad.setPlayers(players);
+			ad.notifyDataSetChanged();
 		}
 		else if(v.getId() == R.id.order_by_w_overall)
 		{
 			warning = new HelpDialog(WINS_HELP);
 			warning.show(getSupportFragmentManager(), "Explanation of Wins");	
+
+			ArrayList<SwissPlayer> players = orderByColumn(ORDER_BY_ROUND_WINS);
+			ad.setPlayers(players);
+			ad.notifyDataSetChanged();
 		}
 		else if(v.getId() == R.id.order_by_l_overall)
 		{
 			warning = new HelpDialog(LOSSES_HELP);
 			warning.show(getSupportFragmentManager(), "Explanation of Losses");	
+
+			ArrayList<SwissPlayer> players = orderByColumn(ORDER_BY_ROUND_LOSSES);
+			ad.setPlayers(players);
+			ad.notifyDataSetChanged();
 		}
 		else if(v.getId() == R.id.order_by_t_overall)
 		{
 			warning = new HelpDialog(TIES_HELP);
 			warning.show(getSupportFragmentManager(), "Explanation of Ties");	
+
+			ArrayList<SwissPlayer> players = orderByColumn(ORDER_BY_ROUND_TIES);
+			ad.setPlayers(players);
+			ad.notifyDataSetChanged();
 		}
 		else if(v.getId() == R.id.order_by_s_overall)
 		{
 			warning = new HelpDialog(SCORE_HELP);
 			warning.show(getSupportFragmentManager(), "Explanation of Score");	
+
+			ArrayList<SwissPlayer> players = orderByColumn(ORDER_BY_SCORE);
+			ad.setPlayers(players);
+			ad.notifyDataSetChanged();
 		}
 
 	}
@@ -696,7 +697,7 @@ public class OverallStandingsActivity extends AbstractPluginCommonActivity
 				convertView = inflater.inflate(R.layout.standings_overall_row, parent, false);
 				p1Portrait = (ImageView)convertView.findViewById(R.id.prof_pic);
 			}
-			
+
 			//Async load the portrait (p1)
 			Player p1 = players.get(position);
 			if (p1.hasPortraitChanged()){
@@ -713,8 +714,8 @@ public class OverallStandingsActivity extends AbstractPluginCommonActivity
 				}
 			}
 			//end async load
-			
-			
+
+
 
 			//setup player information
 			TextView rank = (TextView)convertView.findViewById(R.id.rank_overall);
@@ -771,12 +772,12 @@ public class OverallStandingsActivity extends AbstractPluginCommonActivity
 	 * @param d the double to round
 	 * @return the rounded decimal
 	 */
-	@TargetApi(9)
-	public static double roundOneDecimal(double d) 
+	public static String roundOneDecimal(double d) 
 	{
-		DecimalFormat twoDForm = new DecimalFormat("#.#");
-		twoDForm.setRoundingMode(RoundingMode.HALF_UP);
-		return Double.valueOf(twoDForm.format(d));
+		return String.format("%1$,.1f", d);
+		//		DecimalFormat twoDForm = new DecimalFormat("#.#");
+		//		twoDForm.setRoundingMode(RoundingMode.HALF_UP);
+		//		return Double.valueOf(twoDForm.format(d));
 	}
 
 	/**
@@ -784,12 +785,12 @@ public class OverallStandingsActivity extends AbstractPluginCommonActivity
 	 * @param d the double to round
 	 * @return the rounded decimal
 	 */
-	@TargetApi(9)
-	public static double roundTwoDecimal(double d) 
+	public static String roundTwoDecimal(double d) 
 	{
-		DecimalFormat twoDForm = new DecimalFormat("#.##");
-		twoDForm.setRoundingMode(RoundingMode.HALF_UP);
-		return Double.valueOf(twoDForm.format(d));
+		return String.format("%1$,.2f", d);
+		//		DecimalFormat twoDForm = new DecimalFormat("#.##");
+		//		twoDForm.setRoundingMode(RoundingMode.HALF_UP);
+		//		return Double.valueOf(twoDForm.format(d));
 	}
 
 

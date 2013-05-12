@@ -13,7 +13,12 @@
      <uses-permission
         android:name="android.permission.VIBRATE"
         android:required="true" />
-
+  <uses-permission
+        android:name="android.permission.SEND_SMS"
+        android:required="true" />
+  <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:required="true" />
     <application
         android:icon="@drawable/swiss_bird"
         android:label="@string/app_name"

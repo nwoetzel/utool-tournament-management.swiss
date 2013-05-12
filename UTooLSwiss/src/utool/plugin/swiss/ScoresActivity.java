@@ -2,11 +2,13 @@ package utool.plugin.swiss;
 
 import java.util.Timer;
 import java.util.TimerTask;
-
+import android.app.Dialog;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.Window;
 import android.view.View.OnClickListener;
@@ -68,6 +70,7 @@ public class ScoresActivity extends AbstractPluginCommonActivity{
 		super.onCreate(savedInstanceState);
 
 		this.requestWindowFeature(Window.FEATURE_NO_TITLE);
+
 		//Hide keyboard
 		getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
 
@@ -139,8 +142,8 @@ public class ScoresActivity extends AbstractPluginCommonActivity{
 			}
 		}
 		//end async load
-		
-		
+
+
 		EditText p2Score = (EditText)findViewById(R.id.playerTwoScore);
 		p2Score.setText(match.getPlayerTwoScore()+"");
 
@@ -183,18 +186,78 @@ public class ScoresActivity extends AbstractPluginCommonActivity{
 		}
 	}
 
+
+	/**
+	 * Displays the help messages for the user
+	 * Different help is displayed for participant vs. host/moderator
+	 */
+	private void setupHelp() 
+	{
+		// Create and show the help dialog.
+		final Dialog dialog = new Dialog(ScoresActivity.this);
+		if(tournament.getPermissionLevel()== Player.HOST|| tournament.getPermissionLevel()== Player.MODERATOR)
+		{
+			dialog.setContentView(R.layout.swiss_scores_help);
+		}
+		else
+		{
+			dialog.setContentView(R.layout.swiss_scores_part_help);
+		}
+		dialog.setTitle("UTooL Swiss System Help");
+		dialog.setCancelable(true);
+		Button closeButton = (Button) dialog.findViewById(R.id.help_close_button);
+		closeButton.setOnClickListener(new Button.OnClickListener() {      
+			public void onClick(View view) { 
+				dialog.dismiss();     
+			}
+		});
+		dialog.show();
+
+	}
+
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu) {
+		getMenuInflater().inflate(R.menu.options_menu, menu);
+		return true;
+	}
+
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+		// Handle item selection
+		switch (item.getItemId()) {
+		case R.id.help:
+			setupHelp();
+			break;
+		default:
+			break;
+		}
+		return super.onOptionsItemSelected(item);
+	}
+
 	/**
 	 * Initializes listeners for UI elements
 	 */
 	private void initializeListeners(){
 		//save listener
 		Button saveButton = (Button)findViewById(R.id.saveButton);
-		saveButton.setOnClickListener(new OnClickListener(){
-			@Override
-			public void onClick(View v) {
-				saveButtonPressed();
-			}
-		});
+		//if host/mod activate save button
+		if(tournament.getPermissionLevel()==Player.HOST||tournament.getPermissionLevel()==Player.MODERATOR)
+		{
+
+			saveButton.setOnClickListener(new OnClickListener(){
+				@Override
+				public void onClick(View v) {
+					saveButtonPressed();
+				}
+			});
+
+		}
+		//if participant, disable save
+		else
+		{
+			//TODO disable or hide or change text
+			saveButton.setEnabled(false);
+		}
 
 
 		EditText p1Score = (EditText)findViewById(R.id.playerOneScore);
@@ -254,36 +317,45 @@ public class ScoresActivity extends AbstractPluginCommonActivity{
 
 	/**
 	 * Handler for when the save button is pressed
+	 * Host/Mod: saves score and finishes
+	 * Participant: Doesnt save and doesn't finish
 	 */
 	private void saveButtonPressed(){
-		//get player 1 and player 2 scores
-		EditText p1ScoreView = (EditText)findViewById(R.id.playerOneScore);
-		EditText p2ScoreView = (EditText)findViewById(R.id.playerTwoScore);
+		if(tournament.getPermissionLevel()==Player.HOST||tournament.getPermissionLevel()==Player.MODERATOR)
+		{
+			//get player 1 and player 2 scores
+			EditText p1ScoreView = (EditText)findViewById(R.id.playerOneScore);
+			EditText p2ScoreView = (EditText)findViewById(R.id.playerTwoScore);
 
-		double p1Score;
-		double p2Score;
+			double p1Score;
+			double p2Score;
 
-		try{
-			p1Score = Double.parseDouble(p1ScoreView.getText().toString());
-		} catch (NumberFormatException e){
-			p1Score = match.getPlayerOneScore();
+			try{
+				p1Score = Double.parseDouble(p1ScoreView.getText().toString());
+			} catch (NumberFormatException e){
+				p1Score = match.getPlayerOneScore();
+			}
+
+			try{
+				p2Score = Double.parseDouble(p2ScoreView.getText().toString());
+			} catch (NumberFormatException e){
+				p2Score = match.getPlayerTwoScore();
+			}
+
+			//set the scores and match result for the match
+			match.setScores(p1Score, p2Score, result);
+
+			//send scores to participants
+			OutgoingCommandHandler out = new OutgoingCommandHandler(tournament);
+			out.handleSendScore(-1, matchNum, match.getPlayerOne().getUUID().toString(), match.getPlayerTwo().getUUID().toString(), p1Score, p2Score, roundNum);
+
+			//end the activity
+			finish();
 		}
-
-		try{
-			p2Score = Double.parseDouble(p2ScoreView.getText().toString());
-		} catch (NumberFormatException e){
-			p2Score = match.getPlayerTwoScore();
+		else
+		{
+			//do nothing
 		}
-
-		//set the scores and match result for the match
-		match.setScores(p1Score, p2Score, result);
-
-		//send scores to participants
-		OutgoingCommandHandler out = new OutgoingCommandHandler(tournament);
-		out.handleSendScore(-1, matchNum, match.getPlayerOne().getUUID().toString(), match.getPlayerTwo().getUUID().toString(), p1Score, p2Score, roundNum);
-
-		//end the activity
-		finish();
 	}
 
 	/**

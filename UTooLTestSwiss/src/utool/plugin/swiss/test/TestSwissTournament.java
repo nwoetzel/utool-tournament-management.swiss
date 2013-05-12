@@ -35,7 +35,7 @@ public class TestSwissTournament extends AndroidTestCase{
 
 		assertNotNull(t.getRounds());
 		assertNotNull(t.getObservable());
-		assertNotNull(t.getAutomaticEmailHandler());
+		assertNotNull(t.getAutomaticMessageHandler());
 		assertNotNull(t.getSwissConfiguration());
 
 

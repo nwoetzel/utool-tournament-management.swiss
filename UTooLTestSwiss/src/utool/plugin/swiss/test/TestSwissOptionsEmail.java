@@ -80,7 +80,7 @@ public class TestSwissOptionsEmail extends ActivityUnitTestCase<OptionsEmailTab>
 	public void testInitialization() 
 	{		
 		assertTrue(TournamentContainer.getInstance(tournamentId)!=null);
-		assertTrue(((SwissTournament)TournamentContainer.getInstance(tournamentId)).getAutomaticEmailHandler()!=null);
+		assertTrue(((SwissTournament)TournamentContainer.getInstance(tournamentId)).getAutomaticMessageHandler()!=null);
 		Intent i = new Intent(getInstrumentation().getTargetContext(), OptionsEmailTab.class);
 		i.setClassName(AbstractPluginCommonActivity.UTOOL_TOURNAMENT_CONFIG_PACKAGE, AbstractPluginCommonActivity.UTOOL_TOURNAMENT_CONFIG_CLASS);
 		i.putExtra(AbstractPluginCommonActivity.UTOOL_TOURNAMENT_ID_EXTRA_NAME, tournamentId);

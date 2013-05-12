@@ -5,6 +5,8 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
+import android.util.Log;
+
 import utool.plugin.swiss.Match;
 import utool.plugin.swiss.Round;
 import utool.plugin.swiss.SwissPlayer;
@@ -20,14 +22,25 @@ public class LeastPlayedRoundGenerator extends RoundGenerator{
 
 	@Override
 	public Round generateRound(List<SwissPlayer> orderedPlayers, SwissTournament tournament) {
+
+		Log.e("Least played","begining gen next round");
 		Round ret = new Round(tournament.getRounds().size(), tournament);
 		ArrayList<Match> matches = new ArrayList<Match>();
-
 		int count = 0;
 		ArrayList<SwissPlayer> copiedPlayers = new ArrayList<SwissPlayer>(orderedPlayers);
 
-		while (copiedPlayers.size() > 0){
+		//handle odd player if applicable
+		SwissPlayer byePlayer = null;
+		if (orderedPlayers.size()%2 != 0){
+			byePlayer = findByePlayer(orderedPlayers);
+			copiedPlayers.remove(byePlayer);
+		}
 
+		//proceed with an even count of players
+
+
+		while (copiedPlayers.size() > 0){
+			Log.e("Least played","Looping: "+copiedPlayers.size());
 			ArrayList<PlayerStore> playerStores = new ArrayList<PlayerStore>();
 			//for each player, create a list of players who have played against the player the least
 			for (int i = 0; i < copiedPlayers.size(); i++){
@@ -59,24 +72,24 @@ public class LeastPlayedRoundGenerator extends RoundGenerator{
 					boolean safe = true;
 					//check if that player exists in any other list
 					for (int j = 0; j < playerStores.size(); j++){
-							//if another list has it, do additional checking
-							if (playerStores.get(j).potentialMatches.indexOf(potential) != -1){
-								if (playerStores.get(j).potentialMatches.size() == 1){
-									//if the size is 1, removing it would be bad
-									//we will instead just break away and do nothing with this one
+						//if another list has it, do additional checking
+						if (playerStores.get(j).potentialMatches.indexOf(potential) != -1){
+							if (playerStores.get(j).potentialMatches.size() == 1){
+								//if the size is 1, removing it would be bad
+								//we will instead just break away and do nothing with this one
+								safe = false;
+								break;
+							}
+
+							if (playerStores.get(j).potentialMatches.size() == 2){
+								if (playerStores.get(j).potentialMatches.indexOf(p) != -1){
+									//if size is 2, and the other one was p, removing both would be bad
+									//instead just break away and do nothing
 									safe = false;
 									break;
 								}
-								
-								if (playerStores.get(j).potentialMatches.size() == 2){
-									if (playerStores.get(j).potentialMatches.indexOf(p) != -1){
-										//if size is 2, and the other one was p, removing both would be bad
-										//instead just break away and do nothing
-										safe = false;
-										break;
-									}
-								}
 							}
+						}
 					}
 
 					if (safe){
@@ -89,15 +102,15 @@ public class LeastPlayedRoundGenerator extends RoundGenerator{
 						if (p.countPlayedAgainstPlayer(potential) != 0){
 							System.out.println("Yoyoyoyoyo");
 						}
-						
+
 						//create the match for this pairing
 						Match m = new Match(p, potential, ret);
 						matches.add(m);
-						
+
 						//remove the players from copied players
 						copiedPlayers.remove(p);
 						copiedPlayers.remove(potential);
-						
+
 						//remove the player store holding o
 						for (int j = 0; j < playerStores.size(); j++){
 							if (playerStores.get(j).p.equals(potential)){
@@ -113,7 +126,12 @@ public class LeastPlayedRoundGenerator extends RoundGenerator{
 
 			count++;
 		}
-		
+		//add bye match if necessary
+		if(byePlayer != null){
+			Match m = new Match(byePlayer, SwissPlayer.BYE, ret);
+			matches.add(m);
+		}
+
 		ret.setMatches(matches);
 		return ret;
 	}
@@ -129,7 +147,7 @@ public class LeastPlayedRoundGenerator extends RoundGenerator{
 		 * The player being stored
 		 */
 		final SwissPlayer p;
-		
+
 		/**
 		 * The potential matches being stored
 		 */
@@ -165,24 +183,24 @@ public class LeastPlayedRoundGenerator extends RoundGenerator{
 				}
 
 			});
-			
+
 			List<SwissPlayer> realSorted = new ArrayList<SwissPlayer>();
-			
+
 			List<List<SwissPlayer>> groups = groupPlayers(potentialMatches);
 			for (int i = 0; i < groups.size(); i++){
 				List<SwissPlayer> group = groups.get(i);
 				for (int j = group.size()/2; j < group.size(); j++){
 					realSorted.add(group.get(j));
 				}
-				
+
 				for (int j = 0; j < group.size()/2; j++){
 					realSorted.add(group.get(j));
 				}
 			}
-			
+
 			this.potentialMatches = realSorted;
 		}
-		
+
 		/**
 		 * Groups the players by their scores
 		 * @param potentialMatches The list of potential matches
@@ -207,11 +225,11 @@ public class LeastPlayedRoundGenerator extends RoundGenerator{
 				}
 				groupedPlayers.add(group);
 			}
-			
+
 			return groupedPlayers;
 		}
-		
-		
+
+
 	}
 
 }

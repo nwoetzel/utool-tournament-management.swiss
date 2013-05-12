@@ -5,11 +5,9 @@ import java.util.List;
 import utool.plugin.activity.AbstractPluginCommonActivity;
 import utool.plugin.activity.TournamentContainer;
 import utool.plugin.swiss.TournamentActivity.HelpDialog;
+import android.app.Dialog;
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
-import android.support.v4.app.DialogFragment;
 import android.view.ContextMenu;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -20,6 +18,7 @@ import android.view.ContextMenu.ContextMenuInfo;
 import android.view.View.OnClickListener;
 import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
+import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.CompoundButton.OnCheckedChangeListener;
@@ -55,16 +54,6 @@ public class OptionsTournamentTabPart extends AbstractPluginCommonActivity
 	 */
 	private static final String TIE_HELP= "There are multiple tie breakers that can be used. Check all the tie breakers you would like to use, and order them according to the order you want them applied.\n1. Cumulative: The sum of the players' running scores\n2. Opponent Score: The player whose opponents have the highest summed score\n3. Matches Played: If two players have played against each other previously, the winner of that round wins the tie.\n4. Lazy: Winner is randomly selected.";
 
-	/**
-	 * Holds the first help text
-	 */
-	private static final String HELP_TEXT_1="This tab allows you to change the current tournament's settings. Hold down on a section title to get the option explained in more detail.";
-
-	/**
-	 * Shared preferences key for getting if the screen has been visited before
-	 */
-	private static final String FIRST_TIME_KEY = "utool.plugin.swiss.OptionsTournamentTabPart";
-
 	@Override
 	public void onCreate(Bundle savedInstanceState)
 	{
@@ -72,7 +61,6 @@ public class OptionsTournamentTabPart extends AbstractPluginCommonActivity
 		setContentView(R.layout.swiss_options_tournament_part);
 
 		//pull out configuration object
-		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
 		conf = ((SwissTournament)TournamentContainer.getInstance(getTournamentId())).getSwissConfiguration();
 
 		//Set tie handling
@@ -88,16 +76,6 @@ public class OptionsTournamentTabPart extends AbstractPluginCommonActivity
 		ListView l = (ListView)findViewById(R.id.tie_list_view);
 		ad=new OptionsTieBreakerAdapter(this, R.id.option_list,place, clone );
 		l.setAdapter(ad);
-
-
-		// use a default value to true (is first time)
-		boolean firstTime= prefs.getBoolean(FIRST_TIME_KEY, true); 
-		if(firstTime)
-		{
-			this.setupHelpPopups();
-			//setup preferences to remember help has been played
-			prefs.edit().putBoolean(FIRST_TIME_KEY, false).commit();
-		}
 
 		//Register Items for context menu
 		View t = findViewById(R.id.tie_tv);
@@ -129,14 +107,22 @@ public class OptionsTournamentTabPart extends AbstractPluginCommonActivity
 	}
 
 	/**
-	 * Sets up the popup help bubbles to cycle through
+	 * Displays the help messages for the user
 	 */
-	private void setupHelpPopups() 
+	private void setupHelp() 
 	{
-		DialogFragment warning;
-
-		warning = new HelpDialog(HELP_TEXT_1);
-		warning.show(getSupportFragmentManager(), "Help Dialog");
+		// Create and show the help dialog.
+		final Dialog dialog = new Dialog(OptionsTournamentTabPart.this);
+		dialog.setContentView(R.layout.swiss_options_help_part);
+		dialog.setTitle("UTooL Swiss System Help");
+		dialog.setCancelable(true);
+		Button closeButton = (Button) dialog.findViewById(R.id.help_close_button);
+		closeButton.setOnClickListener(new Button.OnClickListener() {      
+			public void onClick(View view) { 
+				dialog.dismiss();     
+			}
+		});
+		dialog.show();
 	}
 
 	@Override
@@ -151,7 +137,7 @@ public class OptionsTournamentTabPart extends AbstractPluginCommonActivity
 		// Handle item selection
 		switch (item.getItemId()) {
 		case R.id.help:
-			this.setupHelpPopups();
+			this.setupHelp();
 		default:
 			return super.onOptionsItemSelected(item);
 		}

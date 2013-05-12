@@ -39,19 +39,11 @@
         android:id="@+id/option_list"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_above="@+id/options_apply"
+        android:layout_alignParentBottom="true"
         android:layout_alignParentLeft="true"
         android:layout_below="@+id/op_player_header" >
-    </ListView>
 
-    <Button
-        android:id="@+id/options_apply"
-        android:layout_width="100dp"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:textSize="24sp"
-        android:layout_centerHorizontal="true"
-        android:text="Apply" />
+    </ListView>
 
     <TextView
         android:id="@+id/no_player_text"

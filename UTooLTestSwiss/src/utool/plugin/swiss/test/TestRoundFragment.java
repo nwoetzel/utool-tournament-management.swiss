@@ -129,6 +129,9 @@ public class TestRoundFragment extends ActivityUnitTestCase<FragmentHolder>{
 				
 	}
 	
+	/**
+	 * Tests switching
+	 */
 	public void testdoSwitch()
 	{
 		MockRoundFragment m = mActivity.getRoundFragment();

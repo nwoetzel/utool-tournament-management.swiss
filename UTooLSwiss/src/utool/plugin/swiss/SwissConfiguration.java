@@ -32,6 +32,11 @@ public class SwissConfiguration
 	 * Holds the number of rounds in the tournament
 	 */
 	private int numRounds;
+	
+	/**
+	 * true only if the timer was stopped prematurely and therefore should not go off
+	 */
+	private boolean terminatedPrematurely=false;
 
 	/**
 	 * Holds the list of tie breakers to use in order
@@ -98,7 +103,7 @@ public class SwissConfiguration
 	 * Shared preferences that is used to save the swiss options
 	 * any time something is set
 	 */
-	private SharedPreferences pref;
+	public SharedPreferences pref;
 
 	/**
 	 * Pairs players with the opponent they have the closest score to
@@ -604,5 +609,23 @@ public class SwissConfiguration
 	public boolean getStartTimerOnRoundChange()
 	{
 		return startTimerOnRoundChange;
+	}
+	
+	/**
+	 * Setter for if the timer is killed before going off.
+	 * This makes it so the timer doesn't go off (vibrate)
+	 * @param t true if yes
+	 */
+	public void setTimerTerminatedPrematurely(boolean t)
+	{
+		this.terminatedPrematurely=t;
+	}
+
+	/**
+	 * return true if timer terminated early
+	 * @return true if timer killed set 
+	 */
+	public boolean wasTimerTerminated() {
+		return this.terminatedPrematurely;
 	}
 }

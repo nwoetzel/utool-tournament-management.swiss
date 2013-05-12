@@ -5,11 +5,9 @@ import java.util.List;
 import utool.plugin.activity.AbstractPluginCommonActivity;
 import utool.plugin.activity.TournamentContainer;
 import utool.plugin.swiss.TournamentActivity.HelpDialog;
+import android.app.Dialog;
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
-import android.support.v4.app.DialogFragment;
 import android.view.ContextMenu;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -23,6 +21,7 @@ import android.widget.ArrayAdapter;
 import android.widget.CheckBox;
 import android.widget.CompoundButton;
 import android.widget.CompoundButton.OnCheckedChangeListener;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ListView;
@@ -66,12 +65,12 @@ public class OptionsTournamentTab extends AbstractPluginCommonActivity
 	/**
 	 * Holds the round help text string
 	 */
-	private static final String ROUND_HELP= "Enter the number of rounds you want the tournament to last. The number of rounds must be greater than zero, and greater than the number of rounds scores have been recorded for thus far. The default value will always be set to log2(number of players).";
+	private static final String ROUND_HELP= "Number of rounds you want the tournament to last. Default: log2(#players).";
 
 	/**
 	 * Holds the round help text string
 	 */
-	private static final String SCORING_HELP= "Enter the amount of points a player should be rewarded for an overall win, loss or tie in a match.";
+	private static final String SCORING_HELP= "Default amount of points a player should be rewarded for a win, loss or tie in a match.";
 
 	/**
 	 * Holds the matching help text string
@@ -81,17 +80,11 @@ public class OptionsTournamentTab extends AbstractPluginCommonActivity
 	/**
 	 * Holds the tie help text string
 	 */
-	private static final String TIE_HELP= "There are multiple tie breakers that can be used. Check all the tie breakers you would like to use, and order them according to the order you want them applied.\n1. Cumulative: The sum of the players' running scores\n2. Opponent Score: The player whose opponents have the highest summed score\n3. Matches Played: If two players have played against each other previously, the winner of that round wins the tie.\n4. Lazy: Winner is randomly selected.";
-
-	/**
-	 * Holds the first help text
-	 */
-	private static final String HELP_TEXT_1="This tab allows you to change the current tournament's settings. Hold down on a section title to get the option explained in more detail.";
-
-	/**
-	 * Shared preferences key for getting if the screen has been visited before
-	 */
-	private static final String FIRST_TIME_KEY = "utool.plugin.swiss.OptionsTournamentTab";
+	private static final String TIE_HELP= "All selected tie breakers will be used in descending order..\n1. "
+			+"Cumulative: The sum of the players' running scores.\n"
+			+"2. Opponent Score: The player whose opponents have the highest summed score"
+			+"\n3. Matches Played:  If the players have versed each other, the winner will win the tie."
+			+"\n4. Lazy: Winner is randomly selected.";
 
 	@Override
 	public void onCreate(Bundle savedInstanceState)
@@ -100,7 +93,6 @@ public class OptionsTournamentTab extends AbstractPluginCommonActivity
 		setContentView(R.layout.swiss_options_tournament);
 
 		//pull out configuration object
-		SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
 		conf = ((SwissTournament)TournamentContainer.getInstance(getTournamentId())).getSwissConfiguration();
 
 		//setup default number of rounds
@@ -134,16 +126,6 @@ public class OptionsTournamentTab extends AbstractPluginCommonActivity
 		ListView l = (ListView)findViewById(R.id.tie_list_view);
 		ad=new OptionsTieBreakerAdapter(this, R.id.option_list,place, clone );
 		l.setAdapter(ad);
-
-
-		// use a default value to true (is first time)
-		boolean firstTime= prefs.getBoolean(FIRST_TIME_KEY, true); 
-		if(firstTime)
-		{
-			this.setupHelpPopups();
-			//setup preferences to remember help has been played
-			prefs.edit().putBoolean(FIRST_TIME_KEY, false).commit();
-		}
 
 		//Register Items for context menu
 		View r = findViewById(R.id.round_tv);
@@ -221,7 +203,7 @@ public class OptionsTournamentTab extends AbstractPluginCommonActivity
 					runOnUiThread(new Runnable() {
 						@Override
 						public void run() {
-							Toast.makeText(getApplicationContext(), ROUND_OUT_OF_BOUNDS, Toast.LENGTH_LONG).show();
+							Toast.makeText(OptionsTournamentTab.this, ROUND_OUT_OF_BOUNDS, Toast.LENGTH_LONG).show();
 						}
 					});
 				}
@@ -236,7 +218,7 @@ public class OptionsTournamentTab extends AbstractPluginCommonActivity
 				runOnUiThread(new Runnable() {
 					@Override
 					public void run() {
-						Toast.makeText(getApplicationContext(), ROUND_OUT_OF_BOUNDS_ZERO, Toast.LENGTH_LONG).show();
+						Toast.makeText(OptionsTournamentTab.this, ROUND_OUT_OF_BOUNDS_ZERO, Toast.LENGTH_LONG).show();
 					}
 				});
 			}
@@ -294,7 +276,7 @@ public class OptionsTournamentTab extends AbstractPluginCommonActivity
 			runOnUiThread(new Runnable() {
 				@Override
 				public void run() {
-					Toast.makeText(getApplicationContext(), WLT_NOT_CORRECT, Toast.LENGTH_LONG).show();
+					Toast.makeText(OptionsTournamentTab.this, WLT_NOT_CORRECT, Toast.LENGTH_LONG).show();
 				}
 			});
 		}
@@ -319,12 +301,24 @@ public class OptionsTournamentTab extends AbstractPluginCommonActivity
 	/**
 	 * Sets up the popup help bubbles to cycle through
 	 */
-	private void setupHelpPopups() 
+	
+	/**
+	 * Displays the help messages for the user
+	 */
+	private void setupHelp() 
 	{
-		DialogFragment warning;
-
-		warning = new HelpDialog(HELP_TEXT_1);
-		warning.show(getSupportFragmentManager(), "Help Dialog");
+		// Create and show the help dialog.
+		final Dialog dialog = new Dialog(OptionsTournamentTab.this);
+		dialog.setContentView(R.layout.swiss_options_help);
+		dialog.setTitle("UTooL Swiss System Help");
+		dialog.setCancelable(true);
+		Button closeButton = (Button) dialog.findViewById(R.id.help_close_button);
+		closeButton.setOnClickListener(new Button.OnClickListener() {      
+			public void onClick(View view) { 
+				dialog.dismiss();     
+			}
+		});
+		dialog.show();
 	}
 
 	@Override
@@ -339,7 +333,7 @@ public class OptionsTournamentTab extends AbstractPluginCommonActivity
 		// Handle item selection
 		switch (item.getItemId()) {
 		case R.id.help:
-			this.setupHelpPopups();
+			this.setupHelp();
 		default:
 			return super.onOptionsItemSelected(item);
 		}

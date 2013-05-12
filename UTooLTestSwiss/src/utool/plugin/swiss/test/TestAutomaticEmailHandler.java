@@ -2,7 +2,8 @@ package utool.plugin.swiss.test;
 
 import java.util.ArrayList;
 
-import utool.plugin.swiss.communication.AutomaticEmailHandler;
+import utool.plugin.email.Contact;
+import utool.plugin.swiss.communication.AutomaticMessageHandler;
 import junit.framework.TestCase;
 
 /**
@@ -22,7 +23,7 @@ public class TestAutomaticEmailHandler extends TestCase{
 	/**
 	 * Holds a reference to the OOT
 	 */
-	AutomaticEmailHandler aeh;
+	AutomaticMessageHandler aeh;
 
 	/**
 	 * Holds first time users
@@ -35,7 +36,7 @@ public class TestAutomaticEmailHandler extends TestCase{
 	{
 		super.setUp();
 
-		aeh = new AutomaticEmailHandler(tournamentId);
+		aeh = new AutomaticMessageHandler(tournamentId);
 		
 		//test constructor
 		assertEquals(aeh.getPossibleSubscribers().size(), 0);
@@ -47,15 +48,15 @@ public class TestAutomaticEmailHandler extends TestCase{
 	 */
 	public void testSetSubscribers() 
 	{
-		ArrayList<String> subs = new ArrayList<String>();
-		subs.add("Ben");
-		subs.add("Randy");
+		ArrayList<Contact> subs = new ArrayList<Contact>();
+		subs.add(new Contact("Ben", Contact.EMAIL_ADDRESS));
+		subs.add(new Contact("Tom", Contact.PHONE_NUMBER));
 
 		aeh.setSubscribers(subs);
 		assertEquals(aeh.getSubscribers(),subs);
 
 		//make sure safe from mutation
-		subs.add("Tom");
+		subs.add(new Contact("Randy", Contact.EMAIL_ADDRESS));
 		assertNotSame(aeh.getSubscribers(),subs);
 
 		//make sue set works after adding
@@ -69,15 +70,15 @@ public class TestAutomaticEmailHandler extends TestCase{
 	 */
 	public void testSetPossibleSubscribers() 
 	{
-		ArrayList<String> subs = new ArrayList<String>();
-		subs.add("Ben");
-		subs.add("Randy");
+		ArrayList<Contact> subs = new ArrayList<Contact>();
+		subs.add(new Contact("Ben", Contact.EMAIL_ADDRESS));
+		subs.add(new Contact("Randy", Contact.EMAIL_ADDRESS));
 
 		aeh.setPossibleSubscribers(subs);
 		assertEquals(aeh.getPossibleSubscribers(),subs);
 
 		//make sure safe from mutation
-		subs.add("Tom");
+		subs.add(new Contact("ad", Contact.EMAIL_ADDRESS));
 		assertNotSame(aeh.getPossibleSubscribers(),subs);
 
 		//make sue set works after adding

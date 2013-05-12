@@ -46,10 +46,6 @@ public class RoundFragment extends ListFragment
 	 */
 	protected int round;
 
-	/**
-	 * Holds the index of the selected player.
-	 */
-	protected int selectedPlayerIndex = -1;
 
 	/**
 	 * Holds if the selected player is the first or second in the match
@@ -68,15 +64,20 @@ public class RoundFragment extends ListFragment
 		tid = getArguments().getLong("tournamentId");
 		round = getArguments().getInt("round");
 		//unselect player by default
-		selectedPlayerIndex = -1;
+		Log.e(LOG_TAG,"Unselected in onCreate ");
+
+		((TournamentActivity)getActivity()).selectedPlayerIndex = -1;
 	}
 
 	@Override
 	public void onPause()
 	{
 		super.onPause();
+		//close frame layout
+		getActivity().findViewById(R.id.frameLayout).setVisibility(View.GONE);
 		//unselect player
-		selectedPlayerIndex = -1;
+		Log.e(LOG_TAG,"Unselected in onpause ");
+		((TournamentActivity)getActivity()).selectedPlayerIndex = -1;
 	}
 
 	/**
@@ -101,6 +102,7 @@ public class RoundFragment extends ListFragment
 		if(rounds.size()>0)
 		{
 			List<Match> matches = rounds.get(round-1).getMatches();
+			//TODO not mutating matches. COuld this be the problem??
 			ad = new RoundAdapter(getActivity(),android.R.layout.simple_list_item_1, matches);
 			setListAdapter(ad);
 		}
@@ -118,10 +120,18 @@ public class RoundFragment extends ListFragment
 	 */
 	public void update()
 	{
-		List<Match> matches = ((SwissTournament)TournamentContainer.getInstance(tid)).getRounds().get(round-1).getMatches();
+		this.getActivity().runOnUiThread(new Runnable(){
 
-		ad.setMatches(matches);
-		ad.notifyDataSetChanged();
+			@Override
+			public void run() {
+				List<Match> matches = ((SwissTournament)TournamentContainer.getInstance(tid)).getRounds().get(round-1).getMatches();
+
+				ad.setMatches(matches);
+				ad.notifyDataSetChanged();
+			}
+			
+		});
+
 	}
 
 	/**
@@ -151,7 +161,7 @@ public class RoundFragment extends ListFragment
 		@Override
 		public View getView(int position, View convertView, ViewGroup parent)
 		{
-			
+			Log.d("ROUND FRAGMENT GET VIEW", "GETTING THE VIEW");
 			LayoutInflater inflater = getLayoutInflater(getArguments());
 
 			ImageView p1Portrait;
@@ -167,7 +177,7 @@ public class RoundFragment extends ListFragment
 					ImageDecodeTask t = (ImageDecodeTask)o;
 					t.cancel(true);
 				}
-				
+
 				p2Portrait = (ImageView)convertView.findViewById(R.id.player_two_portait);
 				o = p2Portrait.getTag();
 				if (o != null && o instanceof ImageDecodeTask){
@@ -179,10 +189,10 @@ public class RoundFragment extends ListFragment
 				p1Portrait = (ImageView)convertView.findViewById(R.id.player_one_portrait);
 				p2Portrait = (ImageView)convertView.findViewById(R.id.player_two_portait);
 			}
-			
+
 			//Async load the portrait (player 1)
 			Player p1 = matches.get(position).getPlayerOne();
-			
+
 			if (p1.hasPortraitChanged()){
 				p1Portrait.setImageResource(R.drawable.silhouette);
 				ImageDecodeTask task = new ImageDecodeTask(p1Portrait);
@@ -190,17 +200,17 @@ public class RoundFragment extends ListFragment
 				task.execute(p1);
 			} else {
 				Bitmap bm = p1.getPortrait();
-				if (bm != null){
+				if (bm != null && !bm.isRecycled()){
 					p1Portrait.setImageBitmap(bm);
 				} else {
 					p1Portrait.setImageResource(R.drawable.silhouette);
 				}
 			}
 			//end async load
-			
+
 			//Async load the portrait (player 1)
 			Player p2 = matches.get(position).getPlayerTwo();
-			
+
 			if (p2.hasPortraitChanged()){
 				p2Portrait.setImageResource(R.drawable.silhouette);
 				ImageDecodeTask task = new ImageDecodeTask(p2Portrait);
@@ -208,15 +218,15 @@ public class RoundFragment extends ListFragment
 				task.execute(p2);
 			} else {
 				Bitmap bm = p2.getPortrait();
-				if (bm != null){
+				if (bm != null && !bm.isRecycled()){
 					p2Portrait.setImageBitmap(bm);
 				} else {
 					p2Portrait.setImageResource(R.drawable.silhouette);
 				}
 			}
 			//end async load
-			
-			
+
+
 
 			convertView.setOnClickListener(new RowClickListener(position));
 			convertView.setClickable(true);
@@ -258,7 +268,7 @@ public class RoundFragment extends ListFragment
 			tname.setOnLongClickListener(new PlayerOnClickListener(position, false));
 
 			//setup color of textfields: blue if selected, transparent otherwise
-			if(position == selectedPlayerIndex)
+			if(position == ((TournamentActivity)getActivity()).selectedPlayerIndex)
 			{
 				if(isSelP1)
 				{
@@ -376,7 +386,7 @@ public class RoundFragment extends ListFragment
 				//Close up the frame layout
 				getActivity().findViewById(R.id.frameLayout).setVisibility(View.GONE);
 
-				if(selectedPlayerIndex>-1)
+				if(((TournamentActivity)getActivity()).selectedPlayerIndex>-1)
 				{
 					//switch player/unselect player
 					onSecondPlayerClick(mid,isFirstPlayer);
@@ -443,11 +453,14 @@ public class RoundFragment extends ListFragment
 				return false;
 			}
 			//if a player isn't already selected, select this player
-			if(selectedPlayerIndex <0)
+			if(((TournamentActivity)getActivity()).selectedPlayerIndex <0)
 			{
 				if(round ==tourny.getRounds().size())
 				{
-					selectedPlayerIndex = pos;
+
+					((TournamentActivity)getActivity()).selectedPlayerIndex = pos;
+					Log.e(LOG_TAG,"Selected: "+((TournamentActivity)getActivity()).selectedPlayerIndex);
+
 					isSelP1 = isP1;
 					//Log.e(LOG_TAG,"Onclick of pos:"+pos);
 
@@ -465,18 +478,18 @@ public class RoundFragment extends ListFragment
 							List<Match> m = tourny.getRounds().get(tourny.getRounds().size()-1).getMatches();
 
 							//remove selected player from current match
-							Match temp =  m.get(selectedPlayerIndex);
+							Match temp =  m.get(((TournamentActivity)getActivity()).selectedPlayerIndex);
 							if(isSelP1)
 							{
 								//check if second is BYE
 								if(temp.getPlayerTwo().getUUID().equals(Player.BYE))
 								{
 									//would make a double bye, therefore remove match completely
-									m.remove(selectedPlayerIndex);
+									m.remove(((TournamentActivity)getActivity()).selectedPlayerIndex);
 								}
 								else
 								{
-									m.set(selectedPlayerIndex, new Match(new SwissPlayer(new Player(Player.BYE, "BYE")), temp.getPlayerTwo(), tourny.getRounds().get(tourny.getRounds().size()-1)));
+									m.set(((TournamentActivity)getActivity()).selectedPlayerIndex, new Match(new SwissPlayer(new Player(Player.BYE, "BYE")), temp.getPlayerTwo(), tourny.getRounds().get(tourny.getRounds().size()-1)));
 								}
 							}
 							else
@@ -485,11 +498,11 @@ public class RoundFragment extends ListFragment
 								if(temp.getPlayerOne().getUUID().equals(Player.BYE))
 								{
 									//would make a double bye, therefore remove match completely
-									m.remove(selectedPlayerIndex);
+									m.remove(((TournamentActivity)getActivity()).selectedPlayerIndex);
 								}
 								else
 								{
-									m.set(selectedPlayerIndex, new Match(temp.getPlayerOne(), SwissPlayer.BYE, tourny.getRounds().get(tourny.getRounds().size()-1)));
+									m.set(((TournamentActivity)getActivity()).selectedPlayerIndex, new Match(temp.getPlayerOne(), SwissPlayer.BYE, tourny.getRounds().get(tourny.getRounds().size()-1)));
 								}
 							}
 							//take selected player and put in new match against bye
@@ -516,7 +529,9 @@ public class RoundFragment extends ListFragment
 							getActivity().findViewById(R.id.frameLayout).setVisibility(View.GONE);
 
 							//un-select player
-							selectedPlayerIndex=-1;
+							((TournamentActivity)getActivity()).selectedPlayerIndex=-1;
+							Log.e(LOG_TAG,"Unselected in click: ");
+
 
 							//notify connected players of the change
 							IncomingCommandHandler inc = new IncomingCommandHandler(tourny);
@@ -543,12 +558,12 @@ public class RoundFragment extends ListFragment
 	/**
 	 * Holds for onclick
 	 */
-	private int savedPos;
+	protected int savedPos;
 
 	/**
 	 * Holds for onclick
 	 */
-	private boolean savedP1;
+	protected boolean savedP1;
 
 	/**
 	 * Performs needed action if a second player is selected (the switch)
@@ -557,17 +572,15 @@ public class RoundFragment extends ListFragment
 	 */
 	protected void onSecondPlayerClick(int pos, boolean p1)
 	{
-		Log.e(LOG_TAG,"Second click: "+pos +" and "+p1+" [and] "+selectedPlayerIndex +" and "+isSelP1);
-
 		this.savedP1=p1;
 		this.savedPos=pos;
 		SwissTournament tourny = ((SwissTournament)TournamentContainer.getInstance(tid));
 
-		if(selectedPlayerIndex == pos && isSelP1 == p1)
+		if(((TournamentActivity)getActivity()).selectedPlayerIndex == pos && isSelP1 == p1)
 		{
 			//unselect current player
-			selectedPlayerIndex = -1;				
-			//Log.e(LOG_TAG,"Unselect; Onclick of pos:"+pos);
+			((TournamentActivity)getActivity()).selectedPlayerIndex = -1;				
+			Log.e(LOG_TAG,"Unselect; Onclick of pos:"+pos);
 			if(ad!=null)
 				ad.notifyDataSetChanged();
 		}
@@ -580,7 +593,7 @@ public class RoundFragment extends ListFragment
 				//User verification if scores have been set
 				List<Round> rounds = tourny.getRounds();
 				List<Match> matches = rounds.get(round-1).getMatches();
-				if(matches.get(pos).getMatchResult()!=MatchResult.UNDECIDED || matches.get(selectedPlayerIndex).getMatchResult()!=MatchResult.UNDECIDED)
+				if(matches.get(pos).getMatchResult()!=MatchResult.UNDECIDED || matches.get(((TournamentActivity)getActivity()).selectedPlayerIndex).getMatchResult()!=MatchResult.UNDECIDED)
 				{
 					new AlertDialog.Builder(getActivity())
 					.setTitle("Warning")
@@ -597,7 +610,9 @@ public class RoundFragment extends ListFragment
 							public void onClick(DialogInterface dialog, int whichButton) 
 							{
 								//un-select on the cancel
-								selectedPlayerIndex = -1;	
+								Log.e(LOG_TAG,"Unselected on cancel ");
+
+								((TournamentActivity)getActivity()).selectedPlayerIndex = -1;	
 								ad.notifyDataSetChanged();
 							}}).show();
 				}
@@ -620,14 +635,16 @@ public class RoundFragment extends ListFragment
 	 */
 	protected void doSwitch(int pos, boolean p1)
 	{
-		Log.e(LOG_TAG,"Switch: "+pos +" and "+p1+" [and] "+selectedPlayerIndex +" and "+isSelP1);
-
 		SwissTournament tourny = ((SwissTournament)TournamentContainer.getInstance(tid));
 		//perform the switch
-		tourny.switchPlayers(pos,p1,selectedPlayerIndex,isSelP1, round-1);
+		tourny.switchPlayers(pos,p1,((TournamentActivity)getActivity()).selectedPlayerIndex,isSelP1, round-1);
 		if(ad!=null)
 			ad.notifyDataSetChanged();
 
-		selectedPlayerIndex = -1;	
+		((TournamentActivity)getActivity()).selectedPlayerIndex = -1;	
+		Log.e(LOG_TAG,"Unselected on switch ");
+
 	}
+
+
 }

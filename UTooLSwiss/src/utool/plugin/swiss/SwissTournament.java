@@ -14,7 +14,7 @@ import utool.plugin.Player;
 import utool.plugin.activity.AbstractTournament;
 import utool.plugin.observer.Observable;
 import utool.plugin.observer.Observer;
-import utool.plugin.swiss.communication.AutomaticEmailHandler;
+import utool.plugin.swiss.communication.AutomaticMessageHandler;
 import utool.plugin.swiss.communication.IncomingCommandHandler;
 
 /**
@@ -37,7 +37,8 @@ public class SwissTournament extends AbstractTournament{
 	/**
 	 * Holds a reference to the tournament's email handler
 	 */
-	protected volatile AutomaticEmailHandler aeh;
+	protected volatile AutomaticMessageHandler aeh;
+	
 
 	/**
 	 * Holds the swiss configuration object
@@ -58,7 +59,7 @@ public class SwissTournament extends AbstractTournament{
 	 * @param o The object observing this tournament
 	 * @param c The application context
 	 */
-	public SwissTournament(long tournamentId, ArrayList<Player> playerList, String tournamentName, UUID profileId, Observer o, Context c) {
+	public SwissTournament(long tournamentId, List<Player> playerList, String tournamentName, UUID profileId, Observer o, Context c) {
 		super(tournamentId, playerListToSwissPlayers(playerList), 
 				(String) nullChecker(tournamentName, 
 						new NullPointerException("Tournament name cannot be null")),
@@ -95,7 +96,7 @@ public class SwissTournament extends AbstractTournament{
 	 * @param playerList The player list to convert
 	 * @return The list of SwissPlayers
 	 */
-	public static ArrayList<Player> playerListToSwissPlayers(ArrayList<Player> playerList){
+	public static ArrayList<Player> playerListToSwissPlayers(List<Player> playerList){
 		ArrayList<Player> ret = new ArrayList<Player>();
 		for (Player p : playerList){
 			ret.add(new SwissPlayer(p));
@@ -122,6 +123,7 @@ public class SwissTournament extends AbstractTournament{
 
 			//round size is zero, so we're generating the first round
 			ret = generateRound(randomizedPlayers);
+
 		} else{
 			//generating any other round
 			List<SwissPlayer> orderedPlayers = getStandingsArray();
@@ -131,9 +133,8 @@ public class SwissTournament extends AbstractTournament{
 		rounds.add(ret);
 		observable.notifyChanged();
 
-		//update email handler
-		this.getAutomaticEmailHandler().sendOutNotifications();
-		
+		//update email/text handler
+		this.getAutomaticMessageHandler().sendOutNotifications();
 		return ret;
 	}
 
@@ -243,17 +244,17 @@ public class SwissTournament extends AbstractTournament{
 	 * Get the tournament's email handler 
 	 * @return Instance of an email handler
 	 */
-	public AutomaticEmailHandler getAutomaticEmailHandler(){
+	public AutomaticMessageHandler getAutomaticMessageHandler(){
 		if (aeh == null){
 			synchronized (this) {
 				if (aeh == null){
-					aeh = new AutomaticEmailHandler(tournamentId);
+					aeh = new AutomaticMessageHandler(tournamentId);
 				}
 			}
 		}
 		return aeh;
 	}
-
+	
 	/**
 	 * Get the tournament's SwissConfiguration 
 	 * @return Instance of an SwissConfiguration
