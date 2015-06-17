@@ -1,6 +1,5 @@
 package utool.plugin.swiss.mocks;
 import utool.plugin.observer.Observer;
-import utool.plugin.swiss.RoundFragment;
 import utool.plugin.swiss.test.R;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;

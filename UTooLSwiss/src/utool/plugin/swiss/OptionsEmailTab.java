@@ -2,7 +2,6 @@ package utool.plugin.swiss;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.StringTokenizer;
 import utool.plugin.activity.AbstractPluginCommonActivity;
 import utool.plugin.activity.TournamentContainer;
 import utool.plugin.email.Contact;
@@ -10,7 +9,6 @@ import utool.plugin.email.ContactDAO;
 import utool.plugin.swiss.communication.AutomaticMessageHandler;
 import android.app.Dialog;
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.database.SQLException;
 import android.os.Bundle;
 import android.util.Log;
@@ -45,16 +43,6 @@ public class OptionsEmailTab extends AbstractPluginCommonActivity
 	 * Holds the arrayAdapter
 	 */
 	private AdvancedOptionsAdapter ad;
-
-	/**
-	 * String used to save the email addresses permanently
-	 */
-	private static final String SHARED_PREF_EMAIL_ADDRESSES = "email_addresses";
-
-	/**
-	 * String used to save the phone numbers permanently
-	 */
-	private static final String SHARED_PREF_PHONE_NUMBERS = "phone_numbers";
 
 	/**
 	 * holds access to the database
@@ -150,49 +138,6 @@ public class OptionsEmailTab extends AbstractPluginCommonActivity
 	}
 
 	/**
-	 * Loads the contacts from preferences into contacts
-	 * @param contacts the list of contacts
-	 */
-	private void loadContactsPreferences(ArrayList<Contact> contacts) 
-	{
-		//load email addresses from preferences and add to list if unique
-		SwissTournament t = (SwissTournament) TournamentContainer.getInstance(this.getTournamentId());
-		SharedPreferences prefs = t.getSwissConfiguration().pref;
-		String em2= prefs.getString(SHARED_PREF_EMAIL_ADDRESSES, ""); 
-		StringTokenizer e2 = new StringTokenizer(em2, ",");
-		while(e2.hasMoreTokens())
-		{
-			addPossibleSubscriber(contacts, new Contact(e2.nextToken(), Contact.EMAIL_ADDRESS));
-		}
-		//load phone numbers
-		String em= prefs.getString(SHARED_PREF_PHONE_NUMBERS, ""); 
-		StringTokenizer e = new StringTokenizer(em, ",");
-		while(e.hasMoreTokens())
-		{
-			addPossibleSubscriber(contacts, new Contact(e.nextToken(), Contact.PHONE_NUMBER));
-		}
-
-	}
-
-
-	/**
-	 * Saves the email list and the phone number list to preferences
-	 * @param ems email list of contacts
-	 * @param pn phone number list of contacts
-	 */
-	private void saveContactsPreferences(String ems, String pn) {
-
-		//save list to preferences
-		SwissTournament t = (SwissTournament) TournamentContainer.getInstance(this.getTournamentId());
-		SharedPreferences prefs = t.getSwissConfiguration().pref;
-		prefs.edit().putString(SHARED_PREF_EMAIL_ADDRESSES, ems).commit();
-		prefs.edit().putString(SHARED_PREF_PHONE_NUMBERS, pn).commit();
-
-	}
-
-
-
-	/**
 	 * Loads the contacts from db into contacts
 	 * @param contacts the list of contacts
 	 */
@@ -247,59 +192,6 @@ public class OptionsEmailTab extends AbstractPluginCommonActivity
 			}
 		}
 	}
-
-	/**
-	 * Loads the contacts from db into contacts
-	 * @param contacts the list of contacts
-	 */
-	private void loadContactsDatabaseOld(ArrayList<Contact> contacts) 
-	{
-		//open connection
-		dao.open();
-
-		//load email addresses from database and add to list if unique
-		String em= dao.getContactList(ContactDAO.EMAIL_TYPE);
-
-		StringTokenizer e = new StringTokenizer(em, ",");
-		while(e.hasMoreTokens())
-		{
-			addPossibleSubscriber(contacts, new Contact(e.nextToken(), Contact.EMAIL_ADDRESS));
-		}
-
-
-		//load phone numbers	
-		String pn= dao.getContactList(ContactDAO.PHONE_TYPE);
-		StringTokenizer p = new StringTokenizer(pn, ",");
-		while(p.hasMoreTokens())
-		{
-			addPossibleSubscriber(contacts, new Contact(p.nextToken(), Contact.PHONE_NUMBER));
-		}
-
-		//close connection
-		dao.close();
-
-
-	}
-
-
-	/**
-	 * Saves the email list and the phone number list to db
-	 * @param ems email list of contacts
-	 * @param pn phone number list of contacts
-	 */
-	private void saveContactsDatabaseOld(String ems, String pn) 
-	{
-		//open connection
-		dao.open();
-
-		dao.putContactList(ems, ContactDAO.EMAIL_TYPE);
-		dao.putContactList(pn, ContactDAO.PHONE_TYPE);
-
-		//close connection
-		dao.close();
-	}
-
-
 
 	@Override
 	public void onPause()

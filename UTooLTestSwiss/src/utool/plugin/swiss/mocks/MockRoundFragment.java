@@ -2,15 +2,11 @@ package utool.plugin.swiss.mocks;
 
 import java.util.List;
 
-import android.app.AlertDialog;
-import android.content.DialogInterface;
-import android.util.Log;
 import utool.plugin.activity.TournamentContainer;
 import utool.plugin.swiss.Match;
 import utool.plugin.swiss.MatchResult;
 import utool.plugin.swiss.Round;
 import utool.plugin.swiss.SwissTournament;
-import utool.plugin.swiss.TournamentActivity;
 import utool.plugin.swiss.RoundFragment;
 
 public class MockRoundFragment extends RoundFragment{
