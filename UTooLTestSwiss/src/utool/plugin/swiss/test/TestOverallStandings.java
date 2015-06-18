@@ -199,19 +199,19 @@ public class TestOverallStandings extends ActivityUnitTestCase<OverallStandingsA
 		
 		//TEST ROUND ONE DECIMAL
 		double a = 1.9999;
-		assertEquals(""+OverallStandingsActivity.roundOneDecimal(a), ""+2.0);
+		assertEquals("2.0", ""+OverallStandingsActivity.roundOneDecimal(a));
 		a = 1.3333333;
-		assertEquals(""+OverallStandingsActivity.roundOneDecimal(a)+"", ""+1.3);
+		assertEquals("1.3", ""+OverallStandingsActivity.roundOneDecimal(a));
 		a = 2342;
-		assertEquals(""+OverallStandingsActivity.roundOneDecimal(a)+"", ""+2342.0+"");
+		assertEquals("2,342.0", ""+OverallStandingsActivity.roundOneDecimal(a));
 
 		//TEST ROUND TWO DECIMAL
 		a = 1.9999;
-		assertEquals(""+OverallStandingsActivity.roundTwoDecimal(a)+"", ""+2.00+"");
+		assertEquals("2.00", ""+OverallStandingsActivity.roundTwoDecimal(a));
 		a = 1.3333333;
-		assertEquals(""+OverallStandingsActivity.roundTwoDecimal(a)+"", ""+1.33+"");
+		assertEquals("1.33", ""+OverallStandingsActivity.roundTwoDecimal(a));
 		a = 2342;
-		assertEquals(""+OverallStandingsActivity.roundTwoDecimal(a)+"", ""+2342.00+"");
+		assertEquals("2,342.00", ""+OverallStandingsActivity.roundTwoDecimal(a));
 
 	}
 	
